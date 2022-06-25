@@ -13,6 +13,6 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
-      - run: sudo apt install luajit
+      - run: sudo apt install luajit libluajit-5.1-dev
       - run: cargo install cargo-checkmate
       - run: cargo-checkmate
