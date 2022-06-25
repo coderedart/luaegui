@@ -6,3 +6,8 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+egui = "0.18.1"
+tealr = {version =  "0.8.2", features = ["mlua_luajit"], default-features = false}
+
+[dev-dependencies]
+eframe = "0.18.0"

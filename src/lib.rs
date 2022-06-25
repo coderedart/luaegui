@@ -1,8 +1,6 @@
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        let result = 2 + 2;
-        assert_eq!(result, 4);
-    }
-}
+mod context;
+
+pub use context::*;
+pub use egui;
+
+pub fn register_egui_lua_bindings() {}
