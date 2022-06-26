@@ -8,28 +8,52 @@ impl eframe::App for MyApp {
     fn update(&mut self, ctx: &egui::Context, _: &mut eframe::Frame) {
         Window::new("lua editor").show(ctx, |ui| {
             ui.text_edit_multiline(&mut self.lua_code);
+            if ui.button("load lua code").clicked() {
+                self.lua_vm
+                    .load(&self.lua_code)
+                    .exec()
+                    .expect("failed to execute lua code");
+            }
         });
-        self.lua_vm
+        let _: () = self
+            .lua_vm
             .globals()
-            .set("ctx", luaegui::Context::from(ctx.clone()))
+            .get::<_, tealr::mlu::mlua::Function>("on_gui")
+            .expect("failed to get on_gui function")
+            .call(luaegui::Context::from(ctx.clone()))
             .unwrap();
-        self.lua_vm
-            .load(&self.lua_code)
-            .exec()
-            .expect("failed to execute lua code");
     }
 }
 pub const LUA_GUI_CODE: &str = r#"
-    ctx:window(function () ui:label("hello label from lua") end );
+    function on_gui(ctx) 
+        ctx:new_window(
+            "my lua window",
+            {},
+            function (ui)
+                ui:label("hello label from lua")
+            end
+        );
+    end
 "#;
 pub fn main() {
+    let lua_vm = tealr::mlu::mlua::Lua::new();
     let app = Box::new(MyApp {
         lua_code: LUA_GUI_CODE.to_string(),
-        lua_vm: tealr::mlu::mlua::Lua::new(),
+        lua_vm,
     });
     eframe::run_native(
         "eframe lua example",
         eframe::NativeOptions::default(),
-        Box::new(|_| app),
+        Box::new(|creation_context| {
+            app.lua_vm
+                .globals()
+                .set::<_, luaegui::Context>("ctx", creation_context.egui_ctx.clone().into())
+                .unwrap();
+            app.lua_vm
+                .load(LUA_GUI_CODE)
+                .exec()
+                .expect("failed to execute lua code");
+            app
+        }),
     );
 }

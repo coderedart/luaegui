@@ -29,45 +29,24 @@ impl tealr::mlu::mlua::UserData for Context {
 
     fn add_methods<'lua, M: tealr::mlu::mlua::UserDataMethods<'lua, Self>>(methods: &mut M) {
         methods.add_method(
-            "window",
-            |lua, ctx, ui_function: tealr::mlu::mlua::Function| {
-                egui::Window::new("lua window").show(ctx.as_ref(), |ui| {
+            "new_window",
+            |lua, ctx, args: (String, tealr::mlu::mlua::Table, tealr::mlu::mlua::Function)| {
+                let name = args.0;
+                let _window_options = args.1;
+                let ui_callback = args.2;
+                let window = egui::Window::new(&name);
+                window.show(ctx.as_ref(), |ui| {
                     lua.scope(|scope| {
-                        let data = scope.create_nonstatic_userdata::<Ui>(ui.into()).unwrap();
-                        lua.globals().set("ui", data).unwrap();
-                        let _: () = ui_function.call(()).unwrap();
-
+                        let data = scope
+                            .create_nonstatic_userdata::<super::Ui>(ui.into())
+                            .unwrap();
+                        let _: () = ui_callback.call(data).unwrap();
                         Ok(())
                     })
                     .unwrap();
                 });
-
                 Ok(())
             },
         );
     }
-}
-
-pub struct Ui<'ui>(&'ui mut egui::Ui);
-impl<'ui> From<&'ui mut egui::Ui> for Ui<'ui> {
-    fn from(ui: &'ui mut egui::Ui) -> Self {
-        Self(ui)
-    }
-}
-impl<'ui> tealr::mlu::mlua::UserData for Ui<'ui> {
-    fn add_fields<'lua, F: tealr::mlu::mlua::UserDataFields<'lua, Self>>(_fields: &mut F) {}
-
-    fn add_methods<'lua, M: tealr::mlu::mlua::UserDataMethods<'lua, Self>>(methods: &mut M) {
-        methods.add_method_mut("label", |_, ui, text: String| {
-            ui.0.label(&text);
-            Ok(())
-        });
-    }
-}
-pub struct Window<'a>(egui::Window<'a>);
-
-impl<'a> tealr::mlu::mlua::UserData for Window<'a> {
-    fn add_fields<'lua, F: tealr::mlu::mlua::UserDataFields<'lua, Self>>(_fields: &mut F) {}
-
-    fn add_methods<'lua, M: tealr::mlu::mlua::UserDataMethods<'lua, Self>>(_methods: &mut M) {}
 }
