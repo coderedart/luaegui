@@ -51,5 +51,4 @@ impl<'a> TealData for Ui<'a> {
             Ok(())
         });
     }
-
 }

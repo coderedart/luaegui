@@ -21,7 +21,6 @@ impl From<egui::Context> for Context {
     }
 }
 
-
 impl tealr::mlu::TealData for Context {
     fn add_methods<'lua, T: TealDataMethods<'lua, Self>>(methods: &mut T) {
         methods.document_type("This is the Egui Context");

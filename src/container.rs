@@ -1,4 +1,4 @@
-use egui::{Window};
+use egui::Window;
 use tealr::mlu::{
     mlua::{Error, Function, Lua, String as LuaString, Table, Value},
     TealDataMethods,
