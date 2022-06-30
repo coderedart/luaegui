@@ -11,5 +11,6 @@ fn write_type_info_to_file(file_name: &str) {
         .process_type::<luaegui::Ui>()
         .generate("egui", true)
         .expect("failed to generate docs for luaegui");
+    let doc = format!("```\n{}\n```", doc);
     std::fs::write(file_name, doc).expect("failed to write to luaegui docs file");
 }
