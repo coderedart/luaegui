@@ -7,12 +7,24 @@ jobs:
     name: cargo-checkmate
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
         with:
           profile: minimal
           toolchain: stable
           override: true
-      - run: sudo apt install luajit libluajit-5.1-dev
-      - run: cargo install cargo-checkmate
-      - run: cargo-checkmate
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v1
+
+      - name: Install luajit
+        run: sudo apt install luajit libluajit-5.1-dev
+
+      - name: Install checkmate
+        run: cargo install cargo-checkmate
+        
+      - name: Run checkmate
+        run: cargo-checkmate
