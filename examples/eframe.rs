@@ -30,11 +30,18 @@ pub const LUA_GUI_CODE: &str = r#"
         title = "my lua window",
         open = true
     }
+    my_plugin.button_options = {
+        widget_type = "button",
+        text = "my lua button",
+    }
     on_gui = function (ctx) 
         ctx:new_window(
             my_plugin.window_options,
             function (ui)
                 ui:label("hello label from lua")
+                if ui:add(my_plugin.button_options):clicked() then
+                    print("hello")
+                end
             end
         );
     end

@@ -18,6 +18,7 @@ fn write_type_info_to_file() -> String {
     tealr::TypeWalker::new()
         .process_type::<luaegui::Ui>()
         .process_type::<luaegui::Context>()
+        .process_type::<luaegui::Response>()
         .generate("egui", true)
         .expect("failed to generate docs for luaegui")
 }

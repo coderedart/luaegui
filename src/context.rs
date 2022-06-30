@@ -1,25 +1,8 @@
-use tealr::{mlu::*, *};
-
 use crate::add_container_methods;
-#[derive(Clone, MluaTealDerive)]
+use derive_more::*;
+use tealr::{mlu::*, *};
+#[derive(Clone, MluaTealDerive, AsRef, AsMut, From)]
 pub struct Context(egui::Context);
-
-impl AsRef<egui::Context> for Context {
-    fn as_ref(&self) -> &egui::Context {
-        &self.0
-    }
-}
-impl AsMut<egui::Context> for Context {
-    fn as_mut(&mut self) -> &mut egui::Context {
-        &mut self.0
-    }
-}
-
-impl From<egui::Context> for Context {
-    fn from(e: egui::Context) -> Self {
-        Self(e)
-    }
-}
 
 impl tealr::mlu::TealData for Context {
     fn add_methods<'lua, T: TealDataMethods<'lua, Self>>(methods: &mut T) {

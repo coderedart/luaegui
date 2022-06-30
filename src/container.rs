@@ -18,7 +18,7 @@ Args:
 the following options can be set in the first argument table.
     title : string. the only required argument. rest are optional.
     open: bool. only mutable field. if close button on window is clicked, lua will set this field to false. 
-    
+
 "#;
 pub fn new_window(lua: &Lua, context: &Context, args: (Table, Function)) -> Result<(), Error> {
     let options = args.0;
