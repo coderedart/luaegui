@@ -1,16 +1,23 @@
+const DIRECTORY_NAME: &str = "luaegui_docs";
+const DOCS_FILE_PATH: &str = "luaegui_docs/index.md";
+
 pub fn main() {
+    let doc = write_type_info_to_file();
+
+    // to embed it all cleanly within a codeblock
+    let doc = format!("```\n{}\n```", doc);
+
     std::fs::DirBuilder::new()
-        .create("luaegui_docs")
+        .create(DIRECTORY_NAME)
         .expect("failed to create directory");
-    write_type_info_to_file("luaegui_docs/index.md");
+
+    std::fs::write(DOCS_FILE_PATH, doc).expect("failed to write to luaegui docs file");
 }
 
-fn write_type_info_to_file(file_name: &str) {
-    let doc = tealr::TypeWalker::new()
-        .process_type::<luaegui::Context>()
+fn write_type_info_to_file() -> String {
+    tealr::TypeWalker::new()
         .process_type::<luaegui::Ui>()
+        .process_type::<luaegui::Context>()
         .generate("egui", true)
-        .expect("failed to generate docs for luaegui");
-    let doc = format!("```\n{}\n```", doc);
-    std::fs::write(file_name, doc).expect("failed to write to luaegui docs file");
+        .expect("failed to generate docs for luaegui")
 }
