@@ -40,7 +40,6 @@ pub const LUA_GUI_CODE: &str = r#"
     end
 "#;
 pub fn main() {
-    write_type_info_to_file("egui.d.tl");
     let lua_vm = tealr::mlu::mlua::Lua::new();
     let app = Box::new(MyApp {
         lua_code: LUA_GUI_CODE.to_string(),
@@ -63,11 +62,3 @@ pub fn main() {
     );
 }
 
-fn write_type_info_to_file(file_name: &str) {
-    let doc = tealr::TypeWalker::new()
-        .process_type::<luaegui::Context>()
-        .process_type::<luaegui::Ui>()
-        .generate("egui", true)
-        .unwrap();
-    std::fs::write(file_name, doc).unwrap();
-}
