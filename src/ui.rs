@@ -52,5 +52,4 @@ impl<'a> TealData for Ui<'a> {
         });
     }
 
-    fn add_fields<'lua, F: TealDataFields<'lua, Self>>(_fields: &mut F) {}
 }

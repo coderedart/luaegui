@@ -21,11 +21,6 @@ impl From<egui::Context> for Context {
     }
 }
 
-impl Into<egui::Context> for Context {
-    fn into(self) -> egui::Context {
-        self.0
-    }
-}
 
 impl tealr::mlu::TealData for Context {
     fn add_methods<'lua, T: TealDataMethods<'lua, Self>>(methods: &mut T) {
