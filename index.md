@@ -1,3 +1,4 @@
+```
 global record egui
 --This is the Egui Context
 --
@@ -33,3 +34,4 @@ global record egui
 	end
 end
 return egui
+```
