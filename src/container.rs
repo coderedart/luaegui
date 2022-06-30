@@ -1,38 +1,50 @@
-use super::Context;
-use super::Ui;
-pub struct Window<'a>(egui::Window<'a>);
+use egui::{Window};
+use tealr::mlu::{
+    mlua::{Error, Function, Lua, String as LuaString, Table, Value},
+    TealDataMethods,
+};
 
-impl<'a> tealr::mlu::mlua::UserData for Window<'a> {
-    fn add_fields<'lua, F: tealr::mlu::mlua::UserDataFields<'lua, Self>>(_fields: &mut F) {}
+use crate::{Context, Ui};
 
-    fn add_methods<'lua, M: tealr::mlu::mlua::UserDataMethods<'lua, Self>>(methods: &mut M) {
-        methods.add_function(
-            "show",
-            |lua,
-             args: (
-                tealr::mlu::mlua::AnyUserData,
-                Context,
-                tealr::mlu::mlua::Function,
-            )| {
-                let window = args
-                    .0
-                    .take::<Window<'_>>()
-                    .expect("failed to get Window from anyuserdata");
-                window.0.show(args.1.as_ref(), |ui| {
-                    lua.scope(|scope| {
-                        let data = scope.create_nonstatic_userdata::<Ui>(ui.into()).unwrap();
-                        args.2.call::<_, ()>(data).unwrap();
-                        Ok(())
-                    })
-                    .unwrap();
-                });
-                Ok(())
-            },
-        )
-    }
+pub fn add_container_methods<'lua, T: TealDataMethods<'lua, Context>>(methods: &mut T) {
+    methods.document("takes a table which has the relevant options set and a ui callback which will be called if window is not collapsed");
+    methods.document(
+        "the following fields maybe set in the table. only title is required and rest are optional",
+    );
+    methods.document("title : string");
+    methods.document("open: bool. true is window shown or open. false is window not displayed or closed. we will set this field if user clicks the close button on top right of window");
+    methods.add_method("new_window", new_window);
 }
-impl<'open> From<egui::Window<'open>> for Window<'open> {
-    fn from(window: egui::Window<'open>) -> Self {
-        Self(window)
+pub fn new_window(lua: &Lua, context: &Context, args: (Table, Function)) -> Result<(), Error> {
+    let options = args.0;
+    let options_clone = options.clone();
+    let ui_function = args.1;
+    let title = options.get::<_, String>("title")?;
+    let mut window = Window::new(title);
+    let pairs = options.pairs::<LuaString, Value>();
+    let mut open = true;
+    for pair in pairs {
+        let (k, v) = pair?;
+        let k = k.to_str()?;
+        match k {
+            "open" => {
+                open = if let Value::Boolean(b) = v { b } else { true };
+            }
+
+            _ => {}
+        }
     }
+    window = window.open(&mut open);
+
+    let mut result = Ok(());
+    window.show(context.as_ref(), |ui| {
+        result = lua.scope(|scope| {
+            let temp_ui = scope
+                .create_nonstatic_userdata(Ui::from(ui))
+                .expect("failed to create temporary ui");
+            ui_function.call(temp_ui)
+        });
+    });
+    options_clone.set("open", open)?;
+    result
 }

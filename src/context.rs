@@ -1,4 +1,7 @@
-#[derive(Clone)]
+use tealr::{mlu::*, *};
+
+use crate::add_container_methods;
+#[derive(Clone, MluaTealDerive)]
 pub struct Context(egui::Context);
 
 impl AsRef<egui::Context> for Context {
@@ -24,29 +27,12 @@ impl Into<egui::Context> for Context {
     }
 }
 
-impl tealr::mlu::mlua::UserData for Context {
-    fn add_fields<'lua, F: tealr::mlu::mlua::UserDataFields<'lua, Self>>(_fields: &mut F) {}
+impl tealr::mlu::TealData for Context {
+    fn add_methods<'lua, T: TealDataMethods<'lua, Self>>(methods: &mut T) {
+        methods.document_type("This is the Egui Context");
+        methods.document_type("this will be given to the gui function, and can be used to create windows or other containers");
+        methods.document_type("The containers will take a callback which will be given a Ui struct. that can be used by the callback to actually draw the user interface");
 
-    fn add_methods<'lua, M: tealr::mlu::mlua::UserDataMethods<'lua, Self>>(methods: &mut M) {
-        methods.add_method(
-            "new_window",
-            |lua, ctx, args: (String, tealr::mlu::mlua::Table, tealr::mlu::mlua::Function)| {
-                let name = args.0;
-                let _window_options = args.1;
-                let ui_callback = args.2;
-                let window = egui::Window::new(&name);
-                window.show(ctx.as_ref(), |ui| {
-                    lua.scope(|scope| {
-                        let data = scope
-                            .create_nonstatic_userdata::<super::Ui>(ui.into())
-                            .unwrap();
-                        let _: () = ui_callback.call(data).unwrap();
-                        Ok(())
-                    })
-                    .unwrap();
-                });
-                Ok(())
-            },
-        );
+        add_container_methods(methods);
     }
 }

@@ -25,10 +25,14 @@ impl eframe::App for MyApp {
     }
 }
 pub const LUA_GUI_CODE: &str = r#"
-    function on_gui(ctx) 
+    my_plugin = {}
+    my_plugin.window_options = {
+        title = "my lua window",
+        open = true
+    }
+    on_gui = function (ctx) 
         ctx:new_window(
-            "my lua window",
-            {},
+            my_plugin.window_options,
             function (ui)
                 ui:label("hello label from lua")
             end
@@ -36,6 +40,7 @@ pub const LUA_GUI_CODE: &str = r#"
     end
 "#;
 pub fn main() {
+    write_type_info_to_file("egui.d.tl");
     let lua_vm = tealr::mlu::mlua::Lua::new();
     let app = Box::new(MyApp {
         lua_code: LUA_GUI_CODE.to_string(),
@@ -44,11 +49,11 @@ pub fn main() {
     eframe::run_native(
         "eframe lua example",
         eframe::NativeOptions::default(),
-        Box::new(|creation_context| {
-            app.lua_vm
-                .globals()
-                .set::<_, luaegui::Context>("ctx", creation_context.egui_ctx.clone().into())
-                .unwrap();
+        Box::new(|_creation_context| {
+            // app.lua_vm
+            //     .globals()
+            //     .set::<_, luaegui::Context>("ctx", creation_context.egui_ctx.clone().into())
+            //     .unwrap();
             app.lua_vm
                 .load(LUA_GUI_CODE)
                 .exec()
@@ -56,4 +61,13 @@ pub fn main() {
             app
         }),
     );
+}
+
+fn write_type_info_to_file(file_name: &str) {
+    let doc = tealr::TypeWalker::new()
+        .process_type::<luaegui::Context>()
+        .process_type::<luaegui::Ui>()
+        .generate("egui", true)
+        .unwrap();
+    std::fs::write(file_name, doc).unwrap();
 }
