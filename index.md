@@ -1,37 +1,35 @@
-## Welcome to GitHub Pages
+global record egui
+--This is the Egui Context
+--
+--this will be given to the gui function, and can be used to create windows or other containers
+--
+--The containers will take a callback which will be given a Ui struct. that can be used by the callback to actually draw the user interface
+--
+	record Context
+		userdata
 
-You can use the [editor on GitHub](https://github.com/coderedart/luaegui/edit/gh-pages/index.md) to maintain and preview the content for your website in Markdown files.
+		-- Pure methods
+		--takes a table which has the relevant options set and a ui callback which will be called if window is not collapsed
+		--
+		--the following fields maybe set in the table. only title is required and rest are optional
+		--
+		--title : string
+		--
+		--open: bool. true is window shown or open. false is window not displayed or closed. we will set this field if user clicks the close button on top right of window
+		new_window: function(Context,({any : any } ),(function(...any):any...)):()
 
-Whenever you commit to this repository, GitHub Pages will run [Jekyll](https://jekyllrb.com/) to rebuild the pages in your site, from the content in your Markdown files.
 
-### Markdown
+	end
+--This is the egui::Ui wrapper type
+--
+	record Ui
+		userdata
 
-Markdown is a lightweight and easy-to-use syntax for styling your writing. It includes conventions for
+		-- Mutating methods
+		--this function just shows a text as a label
+		label: function(Ui,string):()
 
-```markdown
-Syntax highlighted code block
 
-# Header 1
-## Header 2
-### Header 3
-
-- Bulleted
-- List
-
-1. Numbered
-2. List
-
-**Bold** and _Italic_ and `Code` text
-
-[Link](url) and ![Image](src)
-```
-
-For more details see [Basic writing and formatting syntax](https://docs.github.com/en/github/writing-on-github/getting-started-with-writing-and-formatting-on-github/basic-writing-and-formatting-syntax).
-
-### Jekyll Themes
-
-Your Pages site will use the layout and styles from the Jekyll theme you have selected in your [repository settings](https://github.com/coderedart/luaegui/settings/pages). The name of this theme is saved in the Jekyll `_config.yml` configuration file.
-
-### Support or Contact
-
-Having trouble with Pages? Check out our [documentation](https://docs.github.com/categories/github-pages-basics/) or [contact support](https://support.github.com/contact) and we’ll help you sort it out.
+	end
+end
+return egui
