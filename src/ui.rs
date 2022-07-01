@@ -1,8 +1,8 @@
-use crate::{ui_from_table, Response};
+use crate::{lua_registry_scoped_ui, ui_from_table, Response};
 use derive_more::{Deref, DerefMut, From};
 use tealr::{
     mlu::{
-        mlua::{Error, Lua, Table, UserData, UserDataMethods},
+        mlua::{Error, Function, Lua, MultiValue, Table, UserData, UserDataMethods, Value},
         *,
     },
     *,
@@ -13,7 +13,28 @@ pub struct Ui<'ui>(&'ui mut egui::Ui);
 
 impl<'a> UserData for Ui<'a> {
     fn add_methods<'lua, T: UserDataMethods<'lua, Self>>(methods: &mut T) {
+        methods.add_method_mut("scope", |lua, ui, ui_function: Function| {
+            let inner_response =
+                ui.scope(|ui| lua_registry_scoped_ui!(lua, ui, |ui| ui_function.call(ui)));
+            let response: Response = inner_response.response.into();
+            let key = inner_response.inner?;
+            let mut inner: Vec<Value> = lua
+                .registry_value(&key)
+                .expect("could not get registry value");
+            lua.remove_registry_value(key)?;
+            inner.insert(0, Value::UserData(lua.create_userdata(response)?));
+            let inner = MultiValue::from_vec(inner);
+            Ok(inner)
+        });
         let mut x = UserDataWrapper::from_user_data_methods(methods);
+        // x.add_method_mut("something", |lua, ui, ()|  {
+        //     let ctx = crate::Context::from( ui.ctx().clone());
+        //     let data =  lua.create_userdata(ctx.clone());
+
+        //     Ok((ctx, data.map(|data| Some(Value::UserData(data)))?))
+
+        // });
+
         <Self as TealData>::add_methods(&mut x);
     }
     fn add_fields<'lua, F: ::tealr::mlu::mlua::UserDataFields<'lua, Self>>(fields: &mut F) {
@@ -44,16 +65,43 @@ impl TypeBody for Ui<'static> {
 
 impl<'a> TealData for Ui<'a> {
     fn add_methods<'lua, T: TealDataMethods<'lua, Self>>(methods: &mut T) {
-        use std::string::String;
         methods.document_type("This is the egui::Ui wrapper type");
 
         methods.document("this function just shows the text. only argument is string");
-        methods.add_method_mut("label", |_, ui, text: String| {
+        methods.add_method_mut("label", |_, ui, text: std::string::String| {
             ui.label(&text);
             Ok(())
         });
         methods.document(UI_ADD_DOCS);
         methods.add_method_mut("add", add);
+        methods.document(
+            "makes the Ui unable to be interacted with input. once set, it cannot be unset.",
+        );
+        methods.add_method_mut("set_enabled", |_, ui, enabled: bool| {
+            ui.set_enabled(enabled);
+            Ok(())
+        });
+        // methods.document(
+        //     "new scope to make some localized changes without affect the rest of the Ui after this",
+        // );
+
+        // methods.document("will create a new scope and add the ui after setting whether it should be enabled or not. won't affect other Ui after this");
+        // methods.add_method_mut(
+        //     "add_enabled_ui",
+        //     |lua, ui, (enabled, ui_function): (bool, Function)| {
+        //         let inner_response = ui.add_enabled_ui(enabled, |ui| {
+        //             lua_registry_scoped_ui!(lua, ui, |ui| ui_function.call(ui))
+        //         });
+        //         let response: Response = inner_response.response.into();
+        //         let key = inner_response.inner?;
+        //         let inner: Value = lua
+        //             .registry_value(&key)
+        //             .expect("could not get registry value");
+        //         lua.remove_registry_value(key)?;
+
+        //         Ok((response, inner))
+        //     },
+        // );
     }
 }
 

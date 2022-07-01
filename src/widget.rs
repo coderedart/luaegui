@@ -1,4 +1,4 @@
-use crate::Response;
+use crate::{Response, Ui};
 
 use egui::Widget;
 use tealr::mlu::mlua::{Error, Function, Lua, Table, Value};
@@ -13,8 +13,8 @@ pub fn ui_from_table(lua: &Lua, ui: &mut egui::Ui, table: Table) -> Result<Respo
         "custom" => {
             let ui_function: Function = table.get("ui")?;
             lua.scope(|scope| {
-                let data = scope.create_nonstatic_userdata(crate::Ui::from(ui))?;
-                ui_function.call((data, table))
+                let ui = scope.create_nonstatic_userdata(Ui::from(ui))?;
+                ui_function.call((ui, table))
             })
         }
         rest => match rest {

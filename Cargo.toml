@@ -6,8 +6,6 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-default = ["lua"]
-lua = ["dep:tealr"]
 
 [dependencies]
 derive_more = { version = "*", default-features = false, features = [
@@ -22,6 +20,7 @@ egui = "0.18.1"
 tealr = { version = "*", git = "https://github.com/lenscas/tealr.git", features = [
     "mlua_luajit",
     "derive",
-], default-features = false, optional = true }
+], default-features = false }
+
 [dev-dependencies]
 eframe = "0.18.0"

@@ -18,34 +18,13 @@ impl eframe::App for MyApp {
         let _: () = self
             .lua_vm
             .globals()
-            .get::<_, tealr::mlu::mlua::Function>("on_gui")
+            .get::<_, tealr::mlu::mlua::Function>("On_gui")
             .expect("failed to get on_gui function")
             .call(luaegui::Context::from(ctx.clone()))
-            .unwrap();
+            .expect("failed to call On_gui function");
     }
 }
-pub const LUA_GUI_CODE: &str = r#"
-    my_plugin = {}
-    my_plugin.window_options = {
-        title = "my lua window",
-        open = true
-    }
-    my_plugin.button_options = {
-        widget_type = "button",
-        text = "my lua button",
-    }
-    on_gui = function (ctx) 
-        ctx:new_window(
-            my_plugin.window_options,
-            function (ui)
-                ui:label("hello label from lua")
-                if ui:add(my_plugin.button_options):clicked() then
-                    print("hello")
-                end
-            end
-        );
-    end
-"#;
+pub const LUA_GUI_CODE: &str = include_str!("sample.lua");
 pub fn main() {
     let lua_vm = tealr::mlu::mlua::Lua::new();
     let app = Box::new(MyApp {
@@ -56,10 +35,6 @@ pub fn main() {
         "eframe lua example",
         eframe::NativeOptions::default(),
         Box::new(|_creation_context| {
-            // app.lua_vm
-            //     .globals()
-            //     .set::<_, luaegui::Context>("ctx", creation_context.egui_ctx.clone().into())
-            //     .unwrap();
             app.lua_vm
                 .load(LUA_GUI_CODE)
                 .exec()
