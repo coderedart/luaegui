@@ -23,6 +23,9 @@ global record egui
 		--    wrap: bool.   whether the button should wrap the inside text.
 		add: function(Ui,{any : any } ):(Response)
 
+		--makes the Ui unable to be interacted with input. once set, it cannot be unset.
+		set_enabled: function(Ui,boolean):()
+
 
 	end
 --This is the Egui Context
@@ -45,6 +48,16 @@ global record egui
 		--    open: bool. only mutable field. if close button on window is clicked, lua will set this field to false. 
 		--
 		new_window: function(Context,({any : any } ),(function(...any):any...)):()
+
+
+	end
+--This is the Egui Response
+--
+	record Response
+		userdata
+
+		-- Pure methods
+		clicked: function(Response):(boolean)
 
 
 	end
