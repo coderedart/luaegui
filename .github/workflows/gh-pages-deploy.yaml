@@ -34,7 +34,7 @@ jobs:
         run: cargo run --example=docgen
 
       - name: Generate Docs
-        run: mkdir pages && generate_docs --json luaeguidocs.json --name "luaegui" --build_folder "pages" --root "egui"
+        run: mkdir pages && tealr_doc_gen --json luaeguidocs.json --name "luaegui"
 
       - name: Deploy 🚀
         uses: JamesIves/github-pages-deploy-action@v4
