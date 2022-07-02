@@ -13,13 +13,23 @@ jobs:
       - name: Rust Cache
         uses: Swatinem/rust-cache@v1
       
-      - name: Install luajit
-        run: sudo apt install luajit libluajit-5.1-dev
+      - name: Install luajit and luarocks
+        run: sudo apt install luajit libluajit-5.1-dev luarocks
+
+      - name: Install teal
+        run: luarocks install tl
+
+      - name: Install tealr_docgen
+        run: cargo install --git https://github.com/lenscas/tealr_doc_gen
 
       - name: Install and Build 🔧 # This example project is built using npm and outputs the result to the 'build' folder. Replace with the commands required to build your project, or remove this step entirely if your site is pre-built.
         run: cargo run --example=docgen
 
+      - name: Generate Docs
+        run: mkdir pages
+        run: generate_docs --json luaeguidocs.json --name "luaegui" --build_folder "pages" --root "egui"
+
       - name: Deploy 🚀
         uses: JamesIves/github-pages-deploy-action@v4
         with:
-          folder: luaegui_docs
+          folder: pages

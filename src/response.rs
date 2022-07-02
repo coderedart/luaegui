@@ -5,7 +5,7 @@ use tealr::{
 };
 
 #[derive(Clone, MluaTealDerive, AsRef, AsMut, From, Deref)]
-pub struct Response(egui::Response);
+pub struct Response(pub egui::Response);
 
 impl tealr::mlu::TealData for Response {
     fn add_methods<'lua, T: TealDataMethods<'lua, Self>>(methods: &mut T) {

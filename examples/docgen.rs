@@ -1,25 +1,25 @@
-const DIRECTORY_NAME: &str = "luaegui_docs";
-const DOCS_FILE_PATH: &str = "luaegui_docs/index.md";
+use tealr::TypeWalker;
+
+const DOCS_FILE_PATH: &str = "luaeguidocs.json";
 
 pub fn main() {
-    let doc = write_type_info_to_file();
+    let type_walker = write_type_info_to_file();
 
     // to embed it all cleanly within a codeblock
-    let doc = format!("```\n{}\n```", doc);
-
-    std::fs::DirBuilder::new()
-        .create(DIRECTORY_NAME)
-        .expect("failed to create directory");
+    let doc = serde_json::to_string(&type_walker).expect("failed serialize type walker");
 
     std::fs::write(DOCS_FILE_PATH, doc).expect("failed to write to luaegui docs file");
 }
 
-fn write_type_info_to_file() -> String {
+fn write_type_info_to_file() -> TypeWalker {
+    use luaegui::*;
     tealr::TypeWalker::new()
-        .process_type::<luaegui::Ui>()
-        .process_type::<luaegui::Context>()
-        .process_type::<luaegui::Response>()
-        .process_type::<luaegui::Response>()
-        .generate("egui", true)
-        .expect("failed to generate docs for luaegui")
+        .process_type::<Ui>()
+        .process_type::<Context>()
+        .process_type::<Response>()
+        .process_type::<Color32>()
+        .process_type::<RichText>()
+        .process_type::<EguiProxy>()
+        .process_type::<WidgetText>()
+        .process_type::<Galley>()
 }
