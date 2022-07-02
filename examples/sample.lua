@@ -30,6 +30,7 @@ On_gui = function(ctx)
             end
             if inner_inner:clicked() then
                 print("inner inner")
+                print(Egui.color32.default().r)
             end
         end
     );

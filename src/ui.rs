@@ -1,5 +1,6 @@
 use crate::{
-    lua_registry_scoped_ui_extract, Color32, IntoRichText, LuaEguiWidget, Response, RichText,
+    lua_registry_scoped_ui_extract, Color32, IntoRichText, IntoTextureId, IntoWidgetText,
+    LuaEguiWidget, Response, RichText, TextureId, Vec2, WidgetText,
 };
 use derive_more::{AsMut, AsRef, Deref, DerefMut, From};
 use tealr::{
@@ -49,10 +50,7 @@ impl<'a> TealData for Ui<'a> {
         methods.document_type("This is the egui::Ui wrapper type");
 
         methods.document("this function just shows the text. only argument is string");
-        methods.add_method_mut("label", |_, ui, text: std::string::String| {
-            ui.label(&text);
-            Ok(())
-        });
+
         methods.document(UI_ADD_DOCS);
         methods.add_method_mut("add", add);
         methods.document(
@@ -110,7 +108,33 @@ impl<'a> TealData for Ui<'a> {
                 ))
             },
         );
-        methods.add_method_mut("add_space", |_, ui, amount: f32| Ok(ui.add_space(amount)));
+        methods.add_method_mut("add_space", |_, ui, amount: f32| {
+            ui.add_space(amount);
+            Ok(())
+        });
+        methods.add_method_mut("button", |_, ui, text: IntoWidgetText| {
+            let text: WidgetText = text.into();
+            Ok(Response::from(ui.button(text)))
+        });
+        methods.add_method_mut(
+            "checkbox",
+            |_, ui, (mut selected, text): (bool, IntoWidgetText)| {
+                let text: WidgetText = text.into();
+                let response = Response::from(ui.checkbox(&mut selected, text));
+                Ok((response, selected))
+            },
+        );
+        methods.add_method_mut("code", |_, ui, rich_text: IntoRichText| {
+            let rt: RichText = rich_text.into();
+            ui.code(rt);
+            Ok(())
+        });
+        methods.add_method_mut("code_editor", |_, ui, text: String| {
+            let mut text = text;
+            let response = Response::from(ui.code_editor(&mut text));
+            Ok((response, text))
+        });
+
         methods.add_method_mut(
             "colored_label",
             |_, ui, (color, text): (Color32, IntoRichText)| {
@@ -118,6 +142,109 @@ impl<'a> TealData for Ui<'a> {
                 Ok(Response::from(ui.colored_label(*color.as_ref(), text)))
             },
         );
+
+        methods.add_method_mut("drag_angle", |_, ui, mut radians: f32| {
+            let response = Response::from(ui.drag_angle(&mut radians));
+            Ok((response, radians))
+        });
+        methods.add_method_mut("drag_angle_tau", |_, ui, mut radians: f32| {
+            let response = Response::from(ui.drag_angle_tau(&mut radians));
+            Ok((response, radians))
+        });
+        methods.add_method_mut("heading", |_, ui, rich_text: IntoRichText| {
+            let rt: RichText = rich_text.into();
+            ui.heading(rt);
+            Ok(())
+        });
+        methods.add_method_mut("hyperlink", |_, ui, text: String| {
+            Ok(Response::from(ui.hyperlink(text)))
+        });
+
+        methods.add_method_mut(
+            "hyperlink_to",
+            |_, ui, (text, url): (IntoWidgetText, String)| {
+                let text: WidgetText = text.into();
+                Ok(Response::from(ui.hyperlink_to(text, url)))
+            },
+        );
+        methods.add_method_mut(
+            "image",
+            |_, ui, (texture_id, size): (IntoTextureId, Vec2)| {
+                let texture_id: TextureId = texture_id.into();
+                Ok(Response::from(ui.image(texture_id, size)))
+            },
+        );
+        methods.add_method_mut("label", |_, ui, text: IntoWidgetText| {
+            let text: WidgetText = text.into();
+            ui.label(text);
+            Ok(())
+        });
+        methods.add_method_mut("link", |_, ui, text: IntoWidgetText| {
+            let text: WidgetText = text.into();
+            Ok(Response::from(ui.link(text)))
+        });
+        methods.add_method_mut("monospace", |_, ui, rich_text: IntoRichText| {
+            let rt: RichText = rich_text.into();
+            ui.monospace(rt);
+            Ok(())
+        });
+        methods.add_method_mut(
+            "radio",
+            |_, ui, (selected, text): (bool, IntoWidgetText)| {
+                let text: WidgetText = text.into();
+                let response = Response::from(ui.radio(selected, text));
+                Ok(response)
+            },
+        );
+        methods.add_method_mut(
+            "selectable_label",
+            |_, ui, (selected, text): (bool, IntoWidgetText)| {
+                let text: WidgetText = text.into();
+                let response = Response::from(ui.selectable_label(selected, text));
+                Ok(response)
+            },
+        );
+        methods.add_method_mut("separator", |_, ui, ()| Ok(Response::from(ui.separator())));
+        methods.add_method_mut("small", |_, ui, rich_text: IntoRichText| {
+            let rt: RichText = rich_text.into();
+            ui.small(rt);
+            Ok(())
+        });
+        methods.add_method_mut("small_button", |_, ui, text: IntoWidgetText| {
+            let text: WidgetText = text.into();
+            Ok(Response::from(ui.small_button(text)))
+        });
+
+        methods.add_method_mut("spinner", |_, ui, ()| Ok(Response::from(ui.spinner())));
+        methods.add_method_mut("strong", |_, ui, rich_text: IntoRichText| {
+            let rt: RichText = rich_text.into();
+            ui.strong(rt);
+            Ok(())
+        });
+
+        methods.add_method_mut("text_edit_singleline", |_, ui, text: String| {
+            let mut text = text;
+            let response = Response::from(ui.text_edit_singleline(&mut text));
+            Ok((response, text))
+        });
+        methods.add_method_mut("text_edit_multiline", |_, ui, text: String| {
+            let mut text = text;
+            let response = Response::from(ui.text_edit_multiline(&mut text));
+            Ok((response, text))
+        });
+        methods.add_method_mut(
+            "toggle_value",
+            |_, ui, (mut selected, text): (bool, IntoWidgetText)| {
+                let text: WidgetText = text.into();
+                let response = Response::from(ui.toggle_value(&mut selected, text));
+                Ok((response, selected))
+            },
+        );
+        methods.add_method_mut("weak", |_, ui, rich_text: IntoRichText| {
+            let rt: RichText = rich_text.into();
+            ui.weak(rt);
+            Ok(())
+        });
     }
 }
 struct UiTable<'lua> {
@@ -162,14 +289,11 @@ fn add<'lua>(lua: &'lua Lua, ui: &mut Ui, table: Table) -> Result<Response, mlua
                 Ok(response)
             })
         }
-        rest => {
-            let response = match rest {
-                "button" => egui::Button::from_table(ui, table),
-                _ => {
-                    todo!()
-                }
-            };
-            response
-        }
+        rest => match rest {
+            "button" => egui::Button::from_table(ui, table),
+            _ => {
+                todo!()
+            }
+        },
     }
 }

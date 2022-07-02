@@ -35,7 +35,11 @@ pub fn new_window(lua: &Lua, context: &Context, args: (Table, Function)) -> Resu
             "open" => {
                 open = if let Value::Boolean(b) = v { b } else { true };
             }
-
+            "enabled" => {
+                if let Value::Boolean(b) = v {
+                    window = window.enabled(b);
+                }
+            }
             _ => {}
         }
     }

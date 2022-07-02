@@ -14,19 +14,27 @@ use tealr::{
         mlua::{self, Lua},
         TealData,
     },
-    MluaTealDerive,
+    MluaTealDerive, TypeWalker,
 };
 pub use ui::*;
 pub use widget::*;
 
 #[derive(Clone, Default, MluaTealDerive)]
 pub struct EguiProxy;
-impl TealData for EguiProxy {
-    fn add_methods<'lua, T: tealr::mlu::TealDataMethods<'lua, Self>>(_methods: &mut T) {}
+impl TealData for EguiProxy {}
+pub fn register_egui_lua_bindings(lua: &Lua) -> Result<(), mlua::Error> {
+    let egui_proxy = lua.create_table()?;
 
-    fn add_fields<'lua, F: tealr::mlu::TealDataFields<'lua, Self>>(_fields: &mut F) {}
+    egui_proxy.set("color32", lua.create_proxy::<Color32>()?)?;
+    egui_proxy.set("ctx", lua.create_proxy::<Context>()?)?;
+    egui_proxy.set("galley", lua.create_proxy::<Galley>()?)?;
+    egui_proxy.set("response", lua.create_proxy::<Response>()?)?;
+    egui_proxy.set("rich_text", lua.create_proxy::<RichText>()?)?;
+    egui_proxy.set("ui_docs", lua.create_proxy::<Ui>()?)?;
+    egui_proxy.set("widget_text", lua.create_proxy::<WidgetText>()?)?;
+    lua.globals().set("Egui", egui_proxy)?;
+    Ok(())
 }
-pub fn register_egui_lua_bindings(_lua: &Lua) {}
 
 #[macro_export]
 macro_rules! lua_registry_scoped_ui {
@@ -61,4 +69,15 @@ macro_rules! lua_registry_scoped_ui_extract {
             .expect("failed to remove registry value");
         MultiValue::from_vec(value)
     }};
+}
+
+pub fn get_all_types() -> TypeWalker {
+    tealr::TypeWalker::new()
+        .process_type::<Ui>()
+        .process_type::<Context>()
+        .process_type::<Response>()
+        .process_type::<Color32>()
+        .process_type::<RichText>()
+        .process_type::<WidgetText>()
+        .process_type::<Galley>()
 }

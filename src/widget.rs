@@ -8,7 +8,7 @@ pub trait LuaEguiWidget {
 }
 
 impl LuaEguiWidget for egui::Button {
-    fn from_table<'a>(ui: &'a mut egui::Ui, table: Table) -> Result<Response, Error> {
+    fn from_table(ui: &mut egui::Ui, table: Table) -> Result<Response, Error> {
         let text: String = table.get("text")?;
         let mut button = Self::new(text);
         if let Ok(Value::Boolean(wrap)) = table.get("wrap") {
