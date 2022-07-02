@@ -13,9 +13,14 @@ jobs:
       - name: Rust Cache
         uses: Swatinem/rust-cache@v1
       
-      - name: Install luajit and luarocks
-        run: sudo apt install luajit libluajit-5.1-dev luarocks
-
+      - name: Install Lua/LuaJIT 
+        uses: leafo/gh-actions-lua@v9.1.0
+        with:  
+          luaVersion: "luajit-openresty"       
+      
+      - name: Install Luarocks
+        uses: leafo/gh-actions-luarocks@v4
+        
       - name: Install teal
         run: sudo luarocks install tl
 
