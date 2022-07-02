@@ -20,9 +20,9 @@ jobs:
       
       - name: Install Luarocks
         uses: leafo/gh-actions-luarocks@v4
-        
+
       - name: Install teal
-        run: sudo luarocks install tl
+        run: luarocks install tl
 
       - name: Install tealr_docgen
         run: cargo install --git https://github.com/lenscas/tealr_doc_gen
