@@ -26,8 +26,7 @@ jobs:
         run: cargo run --example=docgen
 
       - name: Generate Docs
-        run: mkdir pages
-        run: generate_docs --json luaeguidocs.json --name "luaegui" --build_folder "pages" --root "egui"
+        run: mkdir pages && generate_docs --json luaeguidocs.json --name "luaegui" --build_folder "pages" --root "egui"
 
       - name: Deploy 🚀
         uses: JamesIves/github-pages-deploy-action@v4
