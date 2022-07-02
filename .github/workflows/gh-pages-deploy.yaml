@@ -14,6 +14,7 @@ jobs:
         uses: Swatinem/rust-cache@v1
       
       - name: Install Lua/LuaJIT 
+        run: sudo apt install luajit libluajit-5.1-dev
         uses: leafo/gh-actions-lua@v9.1.0
         with:  
           luaVersion: "luajit-openresty"       
