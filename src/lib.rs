@@ -81,3 +81,58 @@ pub fn get_all_types() -> TypeWalker {
         .process_type::<WidgetText>()
         .process_type::<Galley>()
 }
+
+#[macro_export]
+macro_rules! from_impl {
+    ($name:ident $etype:path) => {
+        impl From<$name> for $etype {
+            fn from(x: $name) -> Self {
+                x.0
+            }
+        }
+        impl From<&$name> for $etype {
+            fn from(x: &$name) -> Self {
+                x.clone().0
+            }
+        }
+        impl From<$etype> for $name {
+            fn from(x: $etype) -> Self {
+                Self(x)
+            }
+        }
+        impl From<&$etype> for $name {
+            fn from(x: &$etype) -> Self {
+                Self(x.clone())
+            }
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! wrapper {
+    ( $name:ident  $etype:path) => {
+        #[derive(Clone, AsRef, AsMut, Deref, DerefMut, tealr::MluaTealDerive)]
+        pub struct $name(pub $etype);
+
+        $crate::from_impl!($name $etype);
+    };
+    ( copy $name:ident  $etype:path) => {
+        #[derive(Clone, Copy, AsRef, AsMut, Deref, DerefMut, tealr::MluaTealDerive)]
+        pub struct $name(pub $etype);
+
+        $crate::from_impl!($name $etype);
+    };
+    ( default $name:ident  $etype:path) => {
+        #[derive(Clone, Default, AsRef, AsMut, Deref, DerefMut, tealr::MluaTealDerive)]
+        pub struct $name(pub $etype);
+
+        $crate::from_impl!($name $etype);
+    };
+    ( copy default $name:ident  $etype:path) => {
+        #[derive(Clone, Default, Copy, AsRef, AsMut, Deref, DerefMut, tealr::MluaTealDerive)]
+        pub struct $name(pub $etype);
+
+        $crate::from_impl!($name $etype);
+    };
+
+}

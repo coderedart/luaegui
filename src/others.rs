@@ -2,8 +2,45 @@ use std::sync::Arc;
 
 use derive_more::*;
 use tealr::mlu::*;
-#[derive(Copy, Clone, From, AsRef, AsMut, Deref, Default, Debug, tealr::MluaTealDerive)]
-pub struct Color32(pub egui::Color32);
+
+use crate::wrapper;
+
+wrapper!(Spacing egui::style::Spacing);
+impl TealData for Spacing {}
+
+wrapper!(Visuals egui::style::Visuals);
+impl TealData for Visuals {}
+
+wrapper!(TextStyle egui::TextStyle);
+impl TealData for TextStyle {}
+
+wrapper!(Painter egui::Painter);
+impl TealData for Painter {}
+
+wrapper!(Layout egui::Layout);
+impl TealData for Layout {}
+
+wrapper!(copy Rect egui::Rect);
+impl TealData for Rect {}
+
+wrapper!(copy LayerId egui::LayerId);
+impl TealData for LayerId {}
+
+wrapper!(copy default Color32 egui::Color32);
+
+wrapper!(copy Id egui::Id);
+impl TealData for Id {}
+
+wrapper!(RichText egui::RichText);
+impl TealData for RichText {}
+
+wrapper!(WidgetText egui::WidgetText);
+impl TealData for WidgetText {}
+
+wrapper!(TextureId egui::TextureId);
+impl TealData for TextureId {}
+
+wrapper!(copy default Vec2 egui::Vec2);
 
 impl TealData for Color32 {
     fn add_methods<'lua, T: TealDataMethods<'lua, Self>>(methods: &mut T) {
@@ -31,9 +68,6 @@ impl From<IntoWidgetText> for WidgetText {
     }
 }
 
-#[derive(Clone, AsRef, AsMut, Deref, Default, tealr::MluaTealDerive)]
-pub struct WidgetText(pub egui::WidgetText);
-impl TealData for WidgetText {}
 impl From<RichText> for WidgetText {
     fn from(rt: RichText) -> Self {
         Self(rt.0.into())
@@ -44,11 +78,7 @@ impl From<String> for WidgetText {
         Self(s.into())
     }
 }
-impl From<WidgetText> for egui::WidgetText {
-    fn from(wt: WidgetText) -> Self {
-        wt.0
-    }
-}
+
 impl From<Galley> for WidgetText {
     fn from(g: Galley) -> Self {
         Self(g.0.into())
@@ -76,25 +106,7 @@ impl From<IntoRichText> for RichText {
         }
     }
 }
-#[derive(Clone, AsRef, AsMut, Deref, Default, tealr::MluaTealDerive)]
-pub struct RichText(egui::RichText);
 
-impl TealData for RichText {
-    fn add_methods<'lua, T: TealDataMethods<'lua, Self>>(_methods: &mut T) {
-        // methods.add_function("new", function)
-    }
-}
-
-impl From<RichText> for egui::RichText {
-    fn from(rt: RichText) -> Self {
-        rt.0
-    }
-}
-impl From<egui::RichText> for RichText {
-    fn from(rt: egui::RichText) -> Self {
-        Self(rt)
-    }
-}
 impl From<String> for RichText {
     fn from(s: String) -> Self {
         Self(s.into())
@@ -114,24 +126,11 @@ impl TealData for TextureHandle {
     fn add_fields<'lua, F: TealDataFields<'lua, Self>>(_fields: &mut F) {}
 }
 
-#[derive(Clone, AsRef, AsMut, Deref, tealr::MluaTealDerive)]
-pub struct TextureId(egui::TextureId);
-impl From<egui::TextureId> for TextureId {
-    fn from(id: egui::TextureId) -> Self {
-        Self(id)
-    }
-}
-impl From<TextureId> for egui::TextureId {
-    fn from(id: TextureId) -> Self {
-        id.0
-    }
-}
 impl From<TextureHandle> for TextureId {
     fn from(th: TextureHandle) -> Self {
         th.id().into()
     }
 }
-impl TealData for TextureId {}
 tealr::create_union_mlua!(pub enum IntoTextureId = TextureId | TextureHandle);
 
 impl From<IntoTextureId> for TextureId {
@@ -143,8 +142,6 @@ impl From<IntoTextureId> for TextureId {
     }
 }
 
-#[derive(Clone, Copy, AsRef, Default, AsMut, Deref, DerefMut, tealr::MluaTealDerive)]
-pub struct Vec2(egui::Vec2);
 impl TealData for Vec2 {
     fn add_methods<'lua, T: TealDataMethods<'lua, Self>>(methods: &mut T) {
         methods.add_function("default", |_, ()| Ok(Self::default()));
@@ -220,8 +217,28 @@ impl From<&Vec2> for (f32, f32) {
         (v.x, v.y)
     }
 }
-impl From<Vec2> for egui::Vec2 {
-    fn from(v: Vec2) -> Self {
-        v.0
+
+#[derive(Clone, AsRef, AsMut, Deref, DerefMut, tealr::MluaTealDerive)]
+pub struct Style(pub Arc<egui::Style>);
+impl TealData for Style {}
+
+impl From<Style> for egui::Style {
+    fn from(s: Style) -> Self {
+        (*s.0).clone()
+    }
+}
+impl From<egui::Style> for Style {
+    fn from(s: egui::Style) -> Self {
+        Self(Arc::new(s))
+    }
+}
+impl From<&Arc<egui::Style>> for Style {
+    fn from(s: &Arc<egui::Style>) -> Self {
+        Self(s.clone())
+    }
+}
+impl From<Style> for Arc<egui::Style> {
+    fn from(s: Style) -> Self {
+        s.0
     }
 }

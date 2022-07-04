@@ -1,6 +1,7 @@
 use crate::{
-    lua_registry_scoped_ui_extract, Color32, IntoRichText, IntoTextureId, IntoWidgetText,
-    LuaEguiWidget, Response, RichText, TextureId, Vec2, WidgetText,
+    lua_registry_scoped_ui_extract, Color32, Context, Id, IntoRichText, IntoTextureId,
+    IntoWidgetText, LayerId, Layout, LuaEguiWidget, Painter, Rect, Response, RichText, Spacing,
+    Style, TextStyle, TextureId, Vec2, Visuals, WidgetText,
 };
 use derive_more::{AsMut, AsRef, Deref, DerefMut, From};
 use tealr::{
@@ -44,13 +45,142 @@ impl TypeBody for Ui<'static> {
         gen.into()
     }
 }
+// macro_rules! args_convert {
+//     ($arg_type:ty ) => {
+//         $arg_type
+//     };
+//     ($arg_type:ty => $final_type:ty : none) => {
+//         $final_type::from($arg_type)
+//     };
+// }
+/// this macro can be used to do the recurring task of wrapping methods for lua
+/// Args:
+/// * $methods : the name of the `&mut T: UserDataMethods` struct we are given in the impl of `TealData` for `add_methods` function
+/// * $method_id : the name of the method to call on `&Self` which we are wrapping for lua
+/// * ($parameter_types) : the tupe of types that the function will take as arguments
+macro_rules! add_method {
+    ($methods:ident, $method_id:ident) => {
+        $methods.add_method("$method_id", |_, self_ref, ()| Ok(self_ref.$method_id()));
+    };
+    ($methods:ident, $method_id:ident, (), $ret_type:ty) => {
+        $methods.add_method("$method_id", |_, self_ref, ()| {
+            Ok(<$ret_type>::from(self_ref.$method_id()))
+        });
+    };
+    ($methods:ident, $method_id:ident, $arg:ident : $arg_type:ty) => {
+        $methods.add_method("$method_id", |_, self_ref, $arg: $arg_type| {
+            Ok(self_ref.$method_id($arg))
+        });
+    };
+}
+macro_rules! add_method_mut {
+    ($methods:ident, $method_id:ident) => {
+        $methods.add_method_mut("$method_id", |_, self_ref, ()| Ok(self_ref.$method_id()));
+    };
+    ($methods:ident, $method_id:ident, (),$ret:ident : $ret_type:ty) => {
+        $methods.add_method_mut("$method_id", |_, self_ref, ()| {
+            Ok($ret_type::from(self_ref.$method_id()))
+        });
+    };
+    ($methods:ident, $method_id:ident, $arg:ident : $arg_type:ty) => {
+        $methods.add_method_mut("$method_id", |_, self_ref, $arg: $arg_type| {
+            Ok(self_ref.$method_id($arg))
+        });
+    };
+}
 
 impl<'a> TealData for Ui<'a> {
     fn add_methods<'lua, T: TealDataMethods<'lua, Self>>(methods: &mut T) {
         methods.document_type("This is the egui::Ui wrapper type");
 
-        methods.document("this function just shows the text. only argument is string");
+        // Ui Creation functions
+        // TODO: wrap Layout, Rect, ClipRect for creation functions
 
+        // getter / setters
+        add_method!(methods, id, (), Id);
+        add_method!(methods, style, (), Style);
+        add_method_mut!(methods, set_style, style: Style);
+        // TODO: style_mut
+        add_method_mut!(methods, reset_style);
+        add_method!(methods, spacing, (), Spacing);
+        add_method!(methods, visuals, (), Visuals);
+        // TODO: spacing mut
+        // TODO: visuals mut
+        add_method!(methods, ctx, (), Context);
+        add_method!(methods, painter, (), Painter);
+
+        add_method!(methods, is_enabled);
+
+        add_method_mut!(methods, set_enabled, enabled: bool);
+        add_method_mut!(methods, set_visible, visible: bool);
+        add_method!(methods, is_visible);
+        add_method!(methods, layout, (), Layout);
+        add_method!(methods, wrap_text);
+        methods.add_method("painter_at", |_, ui, rect: Rect| {
+            Ok(Painter::from(ui.painter_at(*rect)))
+        });
+        add_method!(methods, layer_id, (), LayerId);
+
+        // TODO all RWLock Guards functions
+        methods.add_method("text_style_height", |_, ui, style: TextStyle| {
+            Ok(ui.text_style_height(style.as_ref()))
+        });
+        add_method!(methods, clip_rect, (), Rect);
+        // add_method_mut!(methods, set_clip_rect, rect: Rect);
+        methods.add_method_mut("set_clip_rect", |_, ui, rect: Rect| {
+            ui.set_clip_rect(rect.into());
+            Ok(())
+        });
+        methods.add_method("is_rect_visible", |_, ui, rect: Rect| {
+            Ok(ui.is_rect_visible(rect.into()))
+        });
+
+        // Size related functions
+        methods.add_method("min_rect", |_, ui, ()| Ok(Rect::from(ui.min_rect())));
+        methods.add_method("max_rect", |_, ui, ()| Ok(Rect::from(ui.max_rect())));
+        methods.add_method_mut("set_max_size", |_, ui, size: Vec2| {
+            ui.set_max_size(size.into());
+            Ok(())
+        });
+
+        add_method_mut!(methods, set_max_width, width: f32);
+        methods.add_method_mut("set_max_height", |_, ui, height: f32| {
+            ui.set_max_height(height);
+            Ok(())
+        });
+        methods.add_method_mut("set_min_size", |_, ui, size: Vec2| {
+            ui.set_min_size(size.into());
+            Ok(())
+        });
+        methods.add_method_mut("set_min_width", |_, ui, width: f32| {
+            ui.set_min_width(width);
+            Ok(())
+        });
+        methods.add_method_mut("set_min_height", |_, ui, height: f32| {
+            ui.set_min_height(height);
+            Ok(())
+        });
+        methods.add_method_mut("shrink_width_to_current", |_, ui, ()| {
+            ui.shrink_width_to_current();
+            Ok(())
+        });
+        methods.add_method_mut("shrink_height_to_current", |_, ui, ()| {
+            ui.shrink_height_to_current();
+            Ok(())
+        });
+        methods.add_method_mut("expand_to_include_rect", |_, ui, rect: Rect| {
+            ui.expand_to_include_rect(rect.into());
+            Ok(())
+        });
+        methods.add_method_mut("set_width_range", |_, ui, (min, max): (f32, f32)| {
+            ui.set_width_range(min..=max);
+            Ok(())
+        });
+        methods.add_method_mut("set_height_range", |_, ui, (min, max): (f32, f32)| {
+            ui.set_height_range(min..=max);
+            Ok(())
+        });
+        // Widget related functions
         methods.document(UI_ADD_DOCS);
         methods.add_method_mut("add", add);
         methods.document(
