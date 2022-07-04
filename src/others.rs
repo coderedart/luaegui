@@ -57,20 +57,39 @@ impl TealData for Color32 {
 
 tealr::create_union_mlua!(pub enum IntoWidgetText =  String | RichText | WidgetText | Galley);
 
+impl From<IntoWidgetText> for egui::WidgetText {
+    fn from(into_widget_text: IntoWidgetText) -> Self {
+        match into_widget_text {
+            IntoWidgetText::String(s) => s.into(),
+            IntoWidgetText::RichText(r) => r.into(),
+            IntoWidgetText::WidgetText(wt) => wt.into(),
+            IntoWidgetText::Galley(g) => g.into(),
+        }
+    }
+}
 impl From<IntoWidgetText> for WidgetText {
     fn from(into_widget_text: IntoWidgetText) -> Self {
         match into_widget_text {
             IntoWidgetText::String(s) => s.into(),
             IntoWidgetText::RichText(r) => r.into(),
-            IntoWidgetText::WidgetText(wt) => wt,
+            IntoWidgetText::WidgetText(wt) => wt.into(),
             IntoWidgetText::Galley(g) => g.into(),
         }
     }
 }
-
 impl From<RichText> for WidgetText {
     fn from(rt: RichText) -> Self {
         Self(rt.0.into())
+    }
+}
+impl From<RichText> for egui::WidgetText {
+    fn from(rt: RichText) -> Self {
+        rt.0.into()
+    }
+}
+impl From<egui::RichText> for WidgetText {
+    fn from(rt: egui::RichText) -> Self {
+        Self(rt.into())
     }
 }
 impl From<String> for WidgetText {
@@ -82,6 +101,11 @@ impl From<String> for WidgetText {
 impl From<Galley> for WidgetText {
     fn from(g: Galley) -> Self {
         Self(g.0.into())
+    }
+}
+impl From<Galley> for egui::WidgetText {
+    fn from(g: Galley) -> Self {
+        g.0.into()
     }
 }
 
@@ -106,7 +130,14 @@ impl From<IntoRichText> for RichText {
         }
     }
 }
-
+impl From<IntoRichText> for egui::RichText {
+    fn from(into_rich_text: IntoRichText) -> Self {
+        match into_rich_text {
+            IntoRichText::String(s) => s.into(),
+            IntoRichText::RichText(r) => r.into(),
+        }
+    }
+}
 impl From<String> for RichText {
     fn from(s: String) -> Self {
         Self(s.into())

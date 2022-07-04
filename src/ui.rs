@@ -60,30 +60,42 @@ impl TypeBody for Ui<'static> {
 /// * ($parameter_types) : the tupe of types that the function will take as arguments
 macro_rules! add_method {
     ($methods:ident, $method_id:ident) => {
-        $methods.add_method("$method_id", |_, self_ref, ()| Ok(self_ref.$method_id()));
+        $methods.add_method(stringify!($method_id), |_, self_ref, ()| {
+            Ok(self_ref.$method_id())
+        });
     };
     ($methods:ident, $method_id:ident, (), $ret_type:ty) => {
-        $methods.add_method("$method_id", |_, self_ref, ()| {
+        $methods.add_method(stringify!($method_id), |_, self_ref, ()| {
             Ok(<$ret_type>::from(self_ref.$method_id()))
         });
     };
     ($methods:ident, $method_id:ident, $arg:ident : $arg_type:ty) => {
-        $methods.add_method("$method_id", |_, self_ref, $arg: $arg_type| {
+        $methods.add_method(stringify!($method_id), |_, self_ref, $arg: $arg_type| {
+            Ok(self_ref.$method_id($arg))
+        });
+    };
+    ($methods:ident, $method_id:ident, args: ($arg_tokens:tt), ret: ($ret_tokens:tt)) => {
+        $methods.add_method(stringify!($method_id), |_, self_ref| {
             Ok(self_ref.$method_id($arg))
         });
     };
 }
+// macro_rules! outer_args_format {
+//     () => {};
+// }
 macro_rules! add_method_mut {
     ($methods:ident, $method_id:ident) => {
-        $methods.add_method_mut("$method_id", |_, self_ref, ()| Ok(self_ref.$method_id()));
+        $methods.add_method_mut(stringify!($method_id), |_, self_ref, ()| {
+            Ok(self_ref.$method_id())
+        });
     };
     ($methods:ident, $method_id:ident, (),$ret:ident : $ret_type:ty) => {
-        $methods.add_method_mut("$method_id", |_, self_ref, ()| {
+        $methods.add_method_mut(stringify!($method_id), |_, self_ref, ()| {
             Ok($ret_type::from(self_ref.$method_id()))
         });
     };
     ($methods:ident, $method_id:ident, $arg:ident : $arg_type:ty) => {
-        $methods.add_method_mut("$method_id", |_, self_ref, $arg: $arg_type| {
+        $methods.add_method_mut(stringify!($method_id), |_, self_ref, $arg: $arg_type| {
             Ok(self_ref.$method_id($arg))
         });
     };
@@ -243,13 +255,11 @@ impl<'a> TealData for Ui<'a> {
             Ok(())
         });
         methods.add_method_mut("button", |_, ui, text: IntoWidgetText| {
-            let text: WidgetText = text.into();
             Ok(Response::from(ui.button(text)))
         });
         methods.add_method_mut(
             "checkbox",
             |_, ui, (mut selected, text): (bool, IntoWidgetText)| {
-                let text: WidgetText = text.into();
                 let response = Response::from(ui.checkbox(&mut selected, text));
                 Ok((response, selected))
             },
@@ -365,14 +375,12 @@ impl<'a> TealData for Ui<'a> {
         methods.add_method_mut(
             "toggle_value",
             |_, ui, (mut selected, text): (bool, IntoWidgetText)| {
-                let text: WidgetText = text.into();
                 let response = Response::from(ui.toggle_value(&mut selected, text));
                 Ok((response, selected))
             },
         );
         methods.add_method_mut("weak", |_, ui, rich_text: IntoRichText| {
-            let rt: RichText = rich_text.into();
-            ui.weak(rt);
+            ui.weak(rich_text);
             Ok(())
         });
     }
