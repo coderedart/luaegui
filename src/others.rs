@@ -53,7 +53,6 @@ impl TealData for Align {}
 wrapper!(copy PointerButton egui::PointerButton);
 impl TealData for PointerButton {}
 
-
 wrapper!(copy default CursorIcon egui::CursorIcon);
 impl TealData for CursorIcon {}
 

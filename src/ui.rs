@@ -1,7 +1,7 @@
 use crate::{
-    lua_registry_scoped_ui_extract, Color32, Context, Id, IntoIdSource, IntoRichText,
-    IntoTextureId, IntoWidgetText, LayerId, Layout, LuaEguiWidget, Painter, Rect, Response, Sense,
-    Spacing, Style, TextStyle, Vec2, Visuals, add_method, add_method_mut,
+    add_method, add_method_mut, lua_registry_scoped_ui_extract, Color32, Context, Id, IntoIdSource,
+    IntoRichText, IntoTextureId, IntoWidgetText, LayerId, Layout, LuaEguiWidget, Painter, Rect,
+    Response, Sense, Spacing, Style, TextStyle, Vec2, Visuals,
 };
 use derive_more::{AsMut, AsRef, Deref, DerefMut, From};
 use tealr::{
@@ -45,7 +45,6 @@ impl TypeBody for Ui<'static> {
         gen.into()
     }
 }
-
 
 impl<'a> TealData for Ui<'a> {
     fn add_methods<'lua, T: TealDataMethods<'lua, Self>>(methods: &mut T) {
