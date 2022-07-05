@@ -150,3 +150,135 @@ macro_rules! wrapper {
     };
 
 }
+/// this macro can be used to do the recurring task of wrapping methods for lua
+/// Args:
+/// * $methods : the name of the `&mut T: UserDataMethods` struct we are given in the impl of `TealData` for `add_methods` function
+/// * $method_id : the name of the method to call on `&Self` which we are wrapping for lua
+/// * ($parameter_types) : the tupe of types that the function will take as arguments
+#[macro_export]
+macro_rules! add_method {
+    ($methods:ident, $method_id:ident) => {
+        $methods.add_method(stringify!($method_id), |_, self_ref, ()| {
+            Ok(self_ref.$method_id())
+        });
+    };
+    ($methods:ident, $method_id:ident, (), $ret_type:ty) => {
+        $methods.add_method(stringify!($method_id), |_, self_ref, ()| {
+            Ok(<$ret_type>::from(self_ref.$method_id()))
+        });
+    };
+    ($methods:ident, $method_id:ident, $arg_type:ty) => {
+        $methods.add_method(stringify!($method_id), |_, self_ref, a0: $arg_type| {
+            Ok(self_ref.$method_id(a0.into()))
+        });
+    };
+    ($methods:ident, $method_id:ident, $arg_type:ty ; $arg_type2:ty) => {
+        $methods.add_method(
+            stringify!($method_id),
+            |_, self_ref, (a0, a1): ($arg_type, $arg_type2)| {
+                Ok(self_ref.$method_id(a0.into(), a1.into()))
+            },
+        );
+    };
+    ($methods:ident, $method_id:ident, $arg_type:ty, $ret_type:ty) => {
+        $methods.add_method(stringify!($method_id), |_, self_ref, a0: $arg_type| {
+            Ok(<$ret_type>::from(self_ref.$method_id(a0.into())))
+        });
+    };
+    ($methods:ident, $method_id:ident, $arg_type:ty, $ret_type:ty ; $ret_type2:ty) => {
+        $methods.add_method(stringify!($method_id), |_, self_ref, a0: $arg_type| {
+            let result = self_ref.$method_id(a0.into());
+            Ok((<$ret_type>::from(result.0), <$ret_type2>::from(result.1)))
+        });
+    };
+    ($methods:ident, $method_id:ident, $arg_type:ty ; $arg_type2:ty, $ret_type:ty) => {
+        $methods.add_method(
+            stringify!($method_id),
+            |_, self_ref, (a0, a1): ($arg_type, $arg_type2)| {
+                Ok(<$ret_type>::from(self_ref.$method_id(a0.into(), a1.into())))
+            },
+        );
+    };
+    ($methods:ident, $method_id:ident, $arg_type:ty ; $arg_type2:ty, $ret_type:ty ; $ret_type2:ty) => {
+        $methods.add_method(
+            stringify!($method_id),
+            |_, self_ref, (a0, a1): ($arg_type, $arg_type2)| {
+                let result = self_ref.$method_id(a0.into(), a1.into());
+
+                Ok((<$ret_type>::from(result.0), <$ret_type2>::from(result.1)))
+            },
+        );
+    };
+    ($methods:ident, $method_id:ident, $arg_type:ty ; $arg_type2:ty ; $arg_type3:ty, $ret_type:ty) => {
+        $methods.add_method(
+            stringify!($method_id),
+            |_, self_ref, (a0, a1, a2): ($arg_type, $arg_type2, $arg_type3)| {
+                Ok(<$ret_type>::from(self_ref.$method_id(
+                    a0.into(),
+                    a1.into(),
+                    a2.into(),
+                )))
+            },
+        );
+    };
+}
+#[macro_export]
+macro_rules! add_method_mut {
+    ($methods:ident, $method_id:ident) => {
+        $methods.add_method_mut(stringify!($method_id), |_, self_ref, ()| {
+            Ok(self_ref.$method_id())
+        });
+    };
+    ($methods:ident, $method_id:ident, (), $ret_type:ty) => {
+        $methods.add_method_mut(stringify!($method_id), |_, self_ref, ()| {
+            Ok(<$ret_type>::from(self_ref.$method_id()))
+        });
+    };
+    ($methods:ident, $method_id:ident, $arg_type:ty) => {
+        $methods.add_method_mut(stringify!($method_id), |_, self_ref, a0: $arg_type| {
+            self_ref.$method_id(a0.into());
+            Ok(())
+        });
+    };
+    ($methods:ident, $method_id:ident,  $arg_type:ty,  $ret_type:ty) => {
+        $methods.add_method_mut(stringify!($method_id), |_, self_ref, a0: $arg_type| {
+            Ok(<$ret_type>::from(self_ref.$method_id(a0.into())))
+        });
+    };
+    ($methods:ident, $method_id:ident, $arg_type:ty, $ret_type:ty ; $ret_type2:ty) => {
+        $methods.add_method_mut(stringify!($method_id), |_, self_ref, a0: $arg_type| {
+            let result = self_ref.$method_id(a0.into());
+            Ok((<$ret_type>::from(result.0), <$ret_type2>::from(result.1)))
+        });
+    };
+    ($methods:ident, $method_id:ident, $arg_type:ty ; $arg_type2:ty, $ret_type:ty) => {
+        $methods.add_method_mut(
+            stringify!($method_id),
+            |_, self_ref, (a0, a1): ($arg_type, $arg_type2)| {
+                Ok(<$ret_type>::from(self_ref.$method_id(a0.into(), a1.into())))
+            },
+        );
+    };
+    ($methods:ident, $method_id:ident, $arg_type:ty ; $arg_type2:ty, $ret_type:ty ; $ret_type2:ty) => {
+        $methods.add_method_mut(
+            stringify!($method_id),
+            |_, self_ref, (a0, a1): ($arg_type, $arg_type2)| {
+                let result = self_ref.$method_id(a0.into(), a1.into());
+
+                Ok((<$ret_type>::from(result.0), <$ret_type2>::from(result.1)))
+            },
+        );
+    };
+    ($methods:ident, $method_id:ident, $arg_type:ty ; $arg_type2:ty ; $arg_type3:ty, $ret_type:ty) => {
+        $methods.add_method_mut(
+            stringify!($method_id),
+            |_, self_ref, (a0, a1, a2): ($arg_type, $arg_type2, $arg_type3)| {
+                Ok(<$ret_type>::from(self_ref.$method_id(
+                    a0.into(),
+                    a1.into(),
+                    a2.into(),
+                )))
+            },
+        );
+    };
+}

@@ -42,11 +42,20 @@ impl TealData for TextureId {}
 
 wrapper!(copy default Vec2 egui::Vec2);
 
+wrapper!(copy default Pos2 egui::Pos2);
+impl TealData for Pos2 {}
 wrapper!(copy Sense egui::Sense);
 impl TealData for Sense {}
 
 wrapper!(copy default Align egui::Align);
 impl TealData for Align {}
+
+wrapper!(copy PointerButton egui::PointerButton);
+impl TealData for PointerButton {}
+
+
+wrapper!(copy default CursorIcon egui::CursorIcon);
+impl TealData for CursorIcon {}
 
 impl TealData for Color32 {
     fn add_methods<'lua, T: TealDataMethods<'lua, Self>>(methods: &mut T) {
