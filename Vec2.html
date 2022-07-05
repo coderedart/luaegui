@@ -16,7 +16,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.4.0/highlight.min.js"
         integrity="sha512-IaaKO80nPNs5j+VLxd42eK/7sYuXQmr+fyywCNA0e+C6gtQnuCXNtORe9xR4LqGPz5U9VpH+ff41wKs/ZmC3iA=="
         crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-    <title>Galley</title>
+    <title>Vec2</title>
     <style>
         html,
         body,
@@ -703,7 +703,7 @@
                         
                     </ul>
                 </li><li>
-                    <a href="./Vec2.html" class="">
+                    <a href="./Vec2.html" class="is-active">
                         <span class="icon"><i class="fa fa-file"></i></span> Vec2
                     </a>
                     <ul>
@@ -827,7 +827,7 @@
                         
                     </ul>
                 </li><li>
-                    <a href="./Galley.html" class="is-active">
+                    <a href="./Galley.html" class="">
                         <span class="icon"><i class="fa fa-file"></i></span> Galley
                     </a>
                     <ul>
@@ -880,7 +880,7 @@
                 <div class="section">
                     <div class="panel">
                         <div class="panel-heading">
-                            <h1 class="title">Galley</h1>
+                            <h1 class="title">Vec2</h1>
                         </div>
                         <div class="panel-block">
                             <div class="container">
@@ -899,7 +899,21 @@
                 </p>
             </div>
             <div class="panel-block">
+                <div class="container">
+                    <div class="card block">
+                        <div class="card-heading" id=x>
+                            <code class="card-header-title"><p>x: number</p></code>
+                        </div>
+                        
+                    </div>
                 
+                    <div class="card block">
+                        <div class="card-heading" id=y>
+                            <code class="card-header-title"><p>y: number</p></code>
+                        </div>
+                        
+                    </div>
+                </div>
             </div>
 
         </div>
@@ -910,7 +924,133 @@
                 </p>
             </div>
             <div class="panel-block">
-                
+                <div class="container">
+                    <div class="card block">
+                        <div class="card-heading" id="normalized">
+                            <code class="card-header-title"><p> normalized: function(<a href="Vec2.html">Vec2</a>):(<a href="Vec2.html">Vec2</a>)</p></code>
+                        </div>
+                        
+                    </div>
+                    <div class="card block">
+                        <div class="card-heading" id="rot90">
+                            <code class="card-header-title"><p> rot90: function(<a href="Vec2.html">Vec2</a>):(<a href="Vec2.html">Vec2</a>)</p></code>
+                        </div>
+                        
+                    </div>
+                    <div class="card block">
+                        <div class="card-heading" id="length">
+                            <code class="card-header-title"><p> length: function(<a href="Vec2.html">Vec2</a>):(number)</p></code>
+                        </div>
+                        
+                    </div>
+                    <div class="card block">
+                        <div class="card-heading" id="length_sq">
+                            <code class="card-header-title"><p> length_sq: function(<a href="Vec2.html">Vec2</a>):(number)</p></code>
+                        </div>
+                        
+                    </div>
+                    <div class="card block">
+                        <div class="card-heading" id="angle">
+                            <code class="card-header-title"><p> angle: function(<a href="Vec2.html">Vec2</a>):(number)</p></code>
+                        </div>
+                        
+                    </div>
+                    <div class="card block">
+                        <div class="card-heading" id="floor">
+                            <code class="card-header-title"><p> floor: function(<a href="Vec2.html">Vec2</a>):(<a href="Vec2.html">Vec2</a>)</p></code>
+                        </div>
+                        
+                    </div>
+                    <div class="card block">
+                        <div class="card-heading" id="round">
+                            <code class="card-header-title"><p> round: function(<a href="Vec2.html">Vec2</a>):(<a href="Vec2.html">Vec2</a>)</p></code>
+                        </div>
+                        
+                    </div>
+                    <div class="card block">
+                        <div class="card-heading" id="ceil">
+                            <code class="card-header-title"><p> ceil: function(<a href="Vec2.html">Vec2</a>):(<a href="Vec2.html">Vec2</a>)</p></code>
+                        </div>
+                        
+                    </div>
+                    <div class="card block">
+                        <div class="card-heading" id="abs">
+                            <code class="card-header-title"><p> abs: function(<a href="Vec2.html">Vec2</a>):(<a href="Vec2.html">Vec2</a>)</p></code>
+                        </div>
+                        
+                    </div>
+                    <div class="card block">
+                        <div class="card-heading" id="is_finite">
+                            <code class="card-header-title"><p> is_finite: function(<a href="Vec2.html">Vec2</a>):(boolean)</p></code>
+                        </div>
+                        
+                    </div>
+                    <div class="card block">
+                        <div class="card-heading" id="any_nan">
+                            <code class="card-header-title"><p> any_nan: function(<a href="Vec2.html">Vec2</a>):(boolean)</p></code>
+                        </div>
+                        
+                    </div>
+                    <div class="card block">
+                        <div class="card-heading" id="min">
+                            <code class="card-header-title"><p> min: function(<a href="Vec2.html">Vec2</a>,<a href="Vec2.html">Vec2</a>):(<a href="Vec2.html">Vec2</a>)</p></code>
+                        </div>
+                        
+                    </div>
+                    <div class="card block">
+                        <div class="card-heading" id="max">
+                            <code class="card-header-title"><p> max: function(<a href="Vec2.html">Vec2</a>,<a href="Vec2.html">Vec2</a>):(<a href="Vec2.html">Vec2</a>)</p></code>
+                        </div>
+                        
+                    </div>
+                    <div class="card block">
+                        <div class="card-heading" id="dot">
+                            <code class="card-header-title"><p> dot: function(<a href="Vec2.html">Vec2</a>,<a href="Vec2.html">Vec2</a>):(number)</p></code>
+                        </div>
+                        
+                    </div>
+                    <div class="card block">
+                        <div class="card-heading" id="min_elem">
+                            <code class="card-header-title"><p> min_elem: function(<a href="Vec2.html">Vec2</a>):(number)</p></code>
+                        </div>
+                        
+                    </div>
+                    <div class="card block">
+                        <div class="card-heading" id="max_elem">
+                            <code class="card-header-title"><p> max_elem: function(<a href="Vec2.html">Vec2</a>):(number)</p></code>
+                        </div>
+                        
+                    </div>
+                    <div class="card block">
+                        <div class="card-heading" id="clamp">
+                            <code class="card-header-title"><p> clamp: function(<a href="Vec2.html">Vec2</a>,(<a href="Vec2.html">Vec2</a>),(<a href="Vec2.html">Vec2</a>)):(<a href="Vec2.html">Vec2</a>)</p></code>
+                        </div>
+                        
+                    </div>
+                    <div class="card block">
+                        <div class="card-heading" id="default">
+                            <code class="card-header-title"><p> default: function():(<a href="Vec2.html">Vec2</a>)</p></code>
+                        </div>
+                        
+                    </div>
+                    <div class="card block">
+                        <div class="card-heading" id="new">
+                            <code class="card-header-title"><p> new: function((number),(number)):(<a href="Vec2.html">Vec2</a>)</p></code>
+                        </div>
+                        
+                    </div>
+                    <div class="card block">
+                        <div class="card-heading" id="splat">
+                            <code class="card-header-title"><p> splat: function(number):(<a href="Vec2.html">Vec2</a>)</p></code>
+                        </div>
+                        
+                    </div>
+                    <div class="card block">
+                        <div class="card-heading" id="angled">
+                            <code class="card-header-title"><p> angled: function(number):(<a href="Vec2.html">Vec2</a>)</p></code>
+                        </div>
+                        
+                    </div></div>
             </div>
         </div>
 </div>
