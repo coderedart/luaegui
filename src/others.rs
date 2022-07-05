@@ -3,10 +3,232 @@ use std::sync::Arc;
 use derive_more::*;
 use tealr::mlu::*;
 
-use crate::wrapper;
+use crate::{add_method, wrapper};
 
+
+wrapper!(TextShape egui::epaint::TextShape);
+impl TealData for TextShape {
+    fn add_methods<'lua, T: TealDataMethods<'lua, Self>>(methods: &mut T) {
+        methods.document_type("egui docs link: https://docs.rs/epaint/latest/epaint/struct.TextShape.html#");
+        methods.add_function("new", |_, (a0, a1) : (Pos2, Galley)| {
+            Ok(Self(egui::epaint::TextShape::new(a0.into(), a1.0.clone())))
+        });
+        add_method!(methods, visual_bounding_rect, (), Rect);
+    }
+
+    fn add_fields<'lua, F: TealDataFields<'lua, Self>>(fields: &mut F) {
+        fields.add_field_method_get("pos", |_, s| Ok(Pos2::from(s.pos)));
+        fields.add_field_method_set("pos", |_, s, a0: Pos2| {
+            s.pos = a0.into();
+            Ok(())
+        });
+        fields.add_field_method_get("galley", |_, s| Ok(Galley::from(s.galley.clone())));
+        fields.add_field_method_set("galley", |_, s, a0: Galley| {
+            s.galley = a0.0.clone();
+            Ok(())
+        });
+        fields.add_field_method_get("underline", |_, s| Ok(Stroke::from(s.underline)));
+        fields.add_field_method_set("underline", |_, s, a0: Stroke| {
+            s.underline = a0.into();
+            Ok(())
+        });
+        fields.add_field_method_get("override_text_color", |_, s| Ok(s.override_text_color.map(Color32::from)));
+        fields.add_field_method_set("override_text_color", |_, s, a0: Option<Color32>| {
+            s.override_text_color = a0.map(|a| a.into());
+            Ok(())
+        });
+        fields.add_field_method_get("angle", |_, s| Ok(s.angle));
+        fields.add_field_method_set("angle", |_, s, a0: f32| {
+            s.angle = a0;
+            Ok(())
+        });
+    }
+}
+
+
+wrapper!(copy default Margin egui::style::Margin);
+impl TealData for Margin {
+    fn add_methods<'lua, T: TealDataMethods<'lua, Self>>(methods: &mut T) {
+        methods.document_type(
+            "egui docs link: https://docs.rs/egui/latest/egui/style/struct.Margin.html",
+        );
+        methods.add_function("same", |_, a0: f32| {
+            Ok(Margin(egui::style::Margin::same(a0)))
+        });
+        methods.add_function("symmetric", |_, (a0, a1): (f32, f32)| {
+            Ok(Margin(egui::style::Margin::symmetric(a0, a1)))
+        });
+        add_method!(methods, sum, (), Vec2);
+        add_method!(methods, left_top, (), Vec2);
+        add_method!(methods, right_bottom, (), Vec2);
+    }
+
+    fn add_fields<'lua, F: TealDataFields<'lua, Self>>(fields: &mut F) {
+        fields.add_field_method_get("left", |_, s| Ok(s.left));
+        fields.add_field_method_set("left", |_, s, a0: f32| {
+            s.left = a0;
+            Ok(())
+        });
+        fields.add_field_method_get("right", |_, s| Ok(s.right));
+        fields.add_field_method_set("right", |_, s, a0: f32| {
+            s.right = a0;
+            Ok(())
+        });
+        fields.add_field_method_get("top", |_, s| Ok(s.top));
+        fields.add_field_method_set("top", |_, s, a0: f32| {
+            s.top = a0;
+            Ok(())
+        });
+        fields.add_field_method_get("bottom", |_, s| Ok(s.bottom));
+        fields.add_field_method_set("bottom", |_, s, a0: f32| {
+            s.bottom = a0;
+            Ok(())
+        });
+    }
+}
+wrapper!(copy default Stroke egui::Stroke);
+impl TealData for Stroke {
+    fn add_methods<'lua, T: TealDataMethods<'lua, Self>>(methods: &mut T) {
+        methods
+            .document_type("egui docs link: https://docs.rs/egui/latest/egui/struct.Stroke.html");
+        methods.add_function("none", |_, ()| Ok(Self::from(egui::Stroke::none())));
+        methods.add_function("new", |_, (a0, a1): (f32, Color32)| {
+            Ok(Self::from(egui::Stroke::new(a0, a1)))
+        });
+        add_method!(methods, is_empty, (), bool);
+    }
+
+    fn add_fields<'lua, F: TealDataFields<'lua, Self>>(fields: &mut F) {
+        fields.add_field_method_get("width", |_, s| Ok(s.width));
+        fields.add_field_method_set("width", |_, s, a0: f32| {
+            s.width = a0;
+            Ok(())
+        });
+        fields.add_field_method_get("color", |_, s| Ok(Color32::from(s.color)));
+        fields.add_field_method_set("color", |_, s, a0: Color32| {
+            s.color = a0.into();
+            Ok(())
+        });
+    }
+}
+wrapper!(copy default Rounding egui::Rounding);
+impl TealData for Rounding {
+    fn add_methods<'lua, T: TealDataMethods<'lua, Self>>(methods: &mut T) {
+        methods.document_type("egui docs link: https://docs.rs/egui/latest/egui/struct.Stroke.html");
+        methods.add_function("same", |_, a0: f32| Ok(Self::from(egui::Rounding::same(a0))));
+        methods.add_function("none", |_, ()| Ok(Self::from(egui::Rounding::none())));
+        add_method!(methods, is_same, (), bool);
+        add_method!(methods, at_least, f32, Rounding);
+        add_method!(methods, at_most, f32, Rounding);
+    }
+
+    fn add_fields<'lua, F: TealDataFields<'lua, Self>>(fields: &mut F) {
+        fields.add_field_method_get("nw", |_, s| Ok(s.nw));
+        fields.add_field_method_set("nw", |_, s, a0: f32| {
+            s.nw = a0;
+            Ok(())
+        });
+        fields.add_field_method_get("ne", |_, s| Ok(s.ne));
+        fields.add_field_method_set("ne", |_, s, a0: f32| {
+            s.ne = a0;
+            Ok(())
+        });
+        fields.add_field_method_get("sw", |_, s| Ok(s.sw));
+        fields.add_field_method_set("sw", |_, s, a0: f32| {
+            s.sw = a0;
+            Ok(())
+        });
+        fields.add_field_method_get("se", |_, s| Ok(s.se));
+        fields.add_field_method_set("se", |_, s, a0: f32| {
+            s.se = a0;
+            Ok(())
+        });
+    }
+}
 wrapper!(Spacing egui::style::Spacing);
-impl TealData for Spacing {}
+impl TealData for Spacing {
+    fn add_methods<'lua, T: TealDataMethods<'lua, Self>>(methods: &mut T) {
+        methods.document_type(
+            "egui docs link: https://docs.rs/egui/latest/egui/style/struct.Spacing.html",
+        );
+        add_method!(methods, icon_rectangles, Rect, Rect ; Rect);
+    }
+
+    fn add_fields<'lua, F: TealDataFields<'lua, Self>>(fields: &mut F) {
+        fields.add_field_method_get("item_spacing", |_, s| Ok(Vec2::from(s.item_spacing)));
+        fields.add_field_method_set("item_spacing", |_, s, a0: Vec2| {
+            s.item_spacing = a0.into();
+            Ok(())
+        });
+        fields.add_field_method_get("window_margin", |_, s| Ok(Margin::from(s.window_margin)));
+        fields.add_field_method_set("window_margin", |_, s, a0: Margin| {
+            s.window_margin = a0.into();
+            Ok(())
+        });
+        fields.add_field_method_get("button_padding", |_, s| Ok(Vec2::from(s.button_padding)));
+        fields.add_field_method_set("button_padding", |_, s, a0: Vec2| {
+            s.button_padding = a0.into();
+            Ok(())
+        });
+        fields.add_field_method_get("indent", |_, s| Ok(s.indent));
+        fields.add_field_method_set("indent", |_, s, a0: f32| {
+            s.indent = a0;
+            Ok(())
+        });
+        fields.add_field_method_get("interact_size", |_, s| Ok(Vec2::from(s.interact_size)));
+        fields.add_field_method_set("interact_size", |_, s, a0: Vec2| {
+            s.interact_size = a0.into();
+            Ok(())
+        });
+        fields.add_field_method_get("slider_width", |_, s| Ok(s.slider_width));
+        fields.add_field_method_set("slider_width", |_, s, a0: f32| {
+            s.slider_width = a0;
+            Ok(())
+        });
+        fields.add_field_method_get("text_edit_width", |_, s| Ok(s.text_edit_width));
+        fields.add_field_method_set("text_edit_width", |_, s, a0: f32| {
+            s.text_edit_width = a0.into();
+            Ok(())
+        });
+        fields.add_field_method_get("icon_width", |_, s| Ok(s.icon_width));
+        fields.add_field_method_set("icon_width", |_, s, a0: f32| {
+            s.icon_width = a0.into();
+            Ok(())
+        });
+        fields.add_field_method_get("icon_width_inner", |_, s| Ok(s.icon_width_inner));
+        fields.add_field_method_set("icon_width_inner", |_, s, a0: f32| {
+            s.icon_width_inner = a0.into();
+            Ok(())
+        });
+        fields.add_field_method_get("icon_spacing", |_, s| Ok(s.icon_spacing));
+        fields.add_field_method_set("icon_spacing", |_, s, a0: f32| {
+            s.icon_spacing = a0.into();
+            Ok(())
+        });
+        fields.add_field_method_get("tooltip_width", |_, s| Ok(s.tooltip_width));
+        fields.add_field_method_set("tooltip_width", |_, s, a0: f32| {
+            s.tooltip_width = a0.into();
+            Ok(())
+        });
+        fields.add_field_method_get("indent_ends_with_horizontal_line", |_, s| {
+            Ok(s.indent_ends_with_horizontal_line)
+        });
+        fields.add_field_method_set("indent_ends_with_horizontal_line", |_, s, a0: bool| {
+            s.indent_ends_with_horizontal_line = a0.into();
+            Ok(())
+        });
+        fields.add_field_method_get("combo_height", |_, s| Ok(s.combo_height));
+        fields.add_field_method_set("combo_height", |_, s, a0: f32| {
+            s.combo_height = a0.into();
+            Ok(())
+        });
+        fields.add_field_method_get("scroll_bar_width", |_, s| Ok(s.scroll_bar_width));
+        fields.add_field_method_set("scroll_bar_width", |_, s, a0: f32| {
+            s.scroll_bar_width = a0.into();
+            Ok(())
+        });
+    }
+}
 
 wrapper!(Visuals egui::style::Visuals);
 impl TealData for Visuals {}
