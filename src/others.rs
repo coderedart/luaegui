@@ -5,12 +5,13 @@ use tealr::mlu::*;
 
 use crate::{add_method, wrapper};
 
-
 wrapper!(TextShape egui::epaint::TextShape);
 impl TealData for TextShape {
     fn add_methods<'lua, T: TealDataMethods<'lua, Self>>(methods: &mut T) {
-        methods.document_type("egui docs link: https://docs.rs/epaint/latest/epaint/struct.TextShape.html#");
-        methods.add_function("new", |_, (a0, a1) : (Pos2, Galley)| {
+        methods.document_type(
+            "egui docs link: https://docs.rs/epaint/latest/epaint/struct.TextShape.html#",
+        );
+        methods.add_function("new", |_, (a0, a1): (Pos2, Galley)| {
             Ok(Self(egui::epaint::TextShape::new(a0.into(), a1.0.clone())))
         });
         add_method!(methods, visual_bounding_rect, (), Rect);
@@ -32,7 +33,9 @@ impl TealData for TextShape {
             s.underline = a0.into();
             Ok(())
         });
-        fields.add_field_method_get("override_text_color", |_, s| Ok(s.override_text_color.map(Color32::from)));
+        fields.add_field_method_get("override_text_color", |_, s| {
+            Ok(s.override_text_color.map(Color32::from))
+        });
         fields.add_field_method_set("override_text_color", |_, s, a0: Option<Color32>| {
             s.override_text_color = a0.map(|a| a.into());
             Ok(())
@@ -44,7 +47,6 @@ impl TealData for TextShape {
         });
     }
 }
-
 
 wrapper!(copy default Margin egui::style::Margin);
 impl TealData for Margin {
@@ -114,8 +116,11 @@ impl TealData for Stroke {
 wrapper!(copy default Rounding egui::Rounding);
 impl TealData for Rounding {
     fn add_methods<'lua, T: TealDataMethods<'lua, Self>>(methods: &mut T) {
-        methods.document_type("egui docs link: https://docs.rs/egui/latest/egui/struct.Stroke.html");
-        methods.add_function("same", |_, a0: f32| Ok(Self::from(egui::Rounding::same(a0))));
+        methods
+            .document_type("egui docs link: https://docs.rs/egui/latest/egui/struct.Stroke.html");
+        methods.add_function("same", |_, a0: f32| {
+            Ok(Self::from(egui::Rounding::same(a0)))
+        });
         methods.add_function("none", |_, ()| Ok(Self::from(egui::Rounding::none())));
         add_method!(methods, is_same, (), bool);
         add_method!(methods, at_least, f32, Rounding);
