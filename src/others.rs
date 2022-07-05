@@ -42,6 +42,12 @@ impl TealData for TextureId {}
 
 wrapper!(copy default Vec2 egui::Vec2);
 
+wrapper!(copy Sense egui::Sense);
+impl TealData for Sense {}
+
+wrapper!(copy default Align egui::Align);
+impl TealData for Align {}
+
 impl TealData for Color32 {
     fn add_methods<'lua, T: TealDataMethods<'lua, Self>>(methods: &mut T) {
         methods.add_function("default", |_, ()| Ok(Color32::default()));
@@ -72,7 +78,7 @@ impl From<IntoWidgetText> for WidgetText {
         match into_widget_text {
             IntoWidgetText::String(s) => s.into(),
             IntoWidgetText::RichText(r) => r.into(),
-            IntoWidgetText::WidgetText(wt) => wt.into(),
+            IntoWidgetText::WidgetText(wt) => wt,
             IntoWidgetText::Galley(g) => g.into(),
         }
     }
@@ -172,6 +178,19 @@ impl From<IntoTextureId> for TextureId {
         }
     }
 }
+impl From<IntoTextureId> for egui::TextureId {
+    fn from(into_texture_id: IntoTextureId) -> Self {
+        match into_texture_id {
+            IntoTextureId::TextureId(tid) => tid.into(),
+            IntoTextureId::TextureHandle(th) => th.into(),
+        }
+    }
+}
+impl From<TextureHandle> for egui::TextureId {
+    fn from(t: TextureHandle) -> Self {
+        t.into()
+    }
+}
 
 impl TealData for Vec2 {
     fn add_methods<'lua, T: TealDataMethods<'lua, Self>>(methods: &mut T) {
@@ -227,7 +246,12 @@ impl From<&Vec2> for [f32; 2] {
         [v.x, v.y]
     }
 }
-
+impl From<egui::Pos2> for Vec2 {
+    #[inline(always)]
+    fn from(v: egui::Pos2) -> Self {
+        Self(egui::vec2(v.x, v.y))
+    }
+}
 impl From<(f32, f32)> for Vec2 {
     #[inline(always)]
     fn from(v: (f32, f32)) -> Self {
@@ -273,3 +297,5 @@ impl From<Style> for Arc<egui::Style> {
         s.0
     }
 }
+
+tealr::create_union_mlua!(pub Derives(Debug, Hash) enum IntoIdSource = String | i64 | bool);

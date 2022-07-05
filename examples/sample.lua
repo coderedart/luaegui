@@ -7,6 +7,7 @@ My_plugin.button_options = {
     widget_type = "button",
     text = "my lua button",
 }
+My_plugin.background = Egui.color32.default()
 On_gui = function(ctx)
     ctx:new_window(
         My_plugin.window_options,
@@ -20,17 +21,18 @@ On_gui = function(ctx)
                     )
                 end
             )
-            -- local response, inner = response_vec[1], response_vec[2]
-            -- local inner, inner_inner = inner[1], inner[2]
-            -- if response:clicked() then
-            --     print("outer")
-            -- end
+            ui:columns(3, function(columns)
+                columns[1]:label("column 1")
+                local response, background = columns[1]:color_edit_button_srgba(My_plugin.background)
+                My_plugin.background = background
+                columns[2]:label("column 2")
+                columns[3]:label("column 3")
+            end)
             if inner:clicked() then
                 print("inner")
             end
             if inner_inner:clicked() then
                 print("inner inner")
-                print(Egui.color32.default().r)
             end
         end
     );

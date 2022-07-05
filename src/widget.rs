@@ -17,3 +17,7 @@ impl LuaEguiWidget for egui::Button {
         Ok(Response::from(button.ui(ui)))
     }
 }
+
+// wrapper!(Button egui::Button);
+// impl TealData for Button {}
+// create_union_mlua!(pub enum IntoWidget = Button | Table);
