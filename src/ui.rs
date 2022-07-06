@@ -1,12 +1,14 @@
 use crate::{
-    add_method, add_method_mut, lua_registry_scoped_ui_extract, Color32, Context, Id, IntoIdSource,
-    IntoRichText, IntoTextureId, IntoWidgetText, LayerId, Layout, LuaEguiWidget, Painter, Rect,
-    Response, Sense, Spacing, Style, TextStyle, Vec2, Visuals,
+    lua_registry_scoped_ui_extract, Color32, Context, Id, IntoIdSource, IntoRichText,
+    IntoTextureId, IntoWidgetText, LayerId, Layout, LuaEguiWidget, Painter, Rect, Response, Sense,
+    Spacing, Style, TextStyle, Vec2, Visuals,
 };
 use derive_more::{AsMut, AsRef, Deref, DerefMut, From};
+
+use luaegui_derive::wrap_method;
 use tealr::{
     mlu::{
-        mlua::{Function, Lua, MultiValue, Table, UserData, UserDataMethods, Value},
+        mlua::{Function, Lua, MultiValue, Result, Table, UserData, UserDataMethods, Value},
         *,
     },
     *,
@@ -53,51 +55,51 @@ impl<'a> TealData for Ui<'a> {
         // Ui Creation functions
         // TODO: wrap Layout, Rect, ClipRect for creation functions
         // getter / setters
-        add_method!(methods, id, (), Id);
-        add_method!(methods, style, (), Style);
+        wrap_method!(m; id;; Id);
+        wrap_method!(m; style;; Style);
         methods.add_method_mut("set_style", |_, ui, a0: Style| {
             ui.set_style(a0);
             Ok(())
         });
         // TODO: style_mut
-        add_method_mut!(methods, reset_style);
-        add_method!(methods, spacing, (), Spacing);
-        add_method!(methods, visuals, (), Visuals);
+        wrap_method!(mm; reset_style);
+        wrap_method!(m; spacing;; Spacing);
+        wrap_method!(m; visuals;; Visuals);
         // TODO: spacing mut
         // TODO: visuals mut
-        add_method!(methods, ctx, (), Context);
-        add_method!(methods, painter, (), Painter);
+        wrap_method!(m; ctx;; Context);
+        wrap_method!(m; painter;; Painter);
 
-        add_method!(methods, is_enabled);
-        add_method_mut!(methods, set_enabled, bool);
+        wrap_method!(m; is_enabled;; bool);
+        wrap_method!(mm; set_enabled;  bool);
 
-        add_method_mut!(methods, set_visible, bool);
-        add_method!(methods, is_visible);
-        add_method!(methods, layout, (), Layout);
-        add_method!(methods, wrap_text);
-        add_method!(methods, painter_at, Rect, Painter);
-        add_method!(methods, layer_id, (), LayerId);
+        wrap_method!(mm; set_visible; bool);
+        wrap_method!(m; is_visible;; bool);
+        wrap_method!(m; layout;; Layout);
+        wrap_method!(m; wrap_text;; bool);
+        wrap_method!(m; painter_at; Rect; Painter);
+        wrap_method!(m; layer_id;; LayerId);
 
         // TODO all RWLock Guards functions
         methods.add_method("text_style_height", |_, ui, style: TextStyle| {
             Ok(ui.text_style_height(style.as_ref()))
         });
-        add_method!(methods, clip_rect, (), Rect);
-        add_method_mut!(methods, set_clip_rect, Rect);
-        add_method_mut!(methods, is_rect_visible, Rect);
+        wrap_method!(m; clip_rect;; Rect);
+        wrap_method!(mm; set_clip_rect; Rect);
+        wrap_method!(mm; is_rect_visible; Rect; bool);
 
         // Size related functions
-        add_method!(methods, min_rect, (), Rect);
-        add_method!(methods, max_rect, (), Rect);
-        add_method_mut!(methods, set_max_size, Vec2);
-        add_method_mut!(methods, set_max_width, f32);
-        add_method_mut!(methods, set_max_height, f32);
-        add_method_mut!(methods, set_min_size, Vec2);
-        add_method_mut!(methods, set_min_width, f32);
-        add_method_mut!(methods, set_min_height, f32);
-        add_method_mut!(methods, shrink_width_to_current);
-        add_method_mut!(methods, shrink_height_to_current);
-        add_method_mut!(methods, expand_to_include_rect, Rect);
+        wrap_method!(m; min_rect;; Rect);
+        wrap_method!(m; max_rect;; Rect);
+        wrap_method!(mm; set_max_size; Vec2);
+        wrap_method!(mm; set_max_width; f32);
+        wrap_method!(mm; set_max_height; f32);
+        wrap_method!(mm; set_min_size; Vec2);
+        wrap_method!(mm; set_min_width; f32);
+        wrap_method!(mm; set_min_height; f32);
+        wrap_method!(mm; shrink_width_to_current);
+        wrap_method!(mm; shrink_height_to_current);
+        wrap_method!(mm; expand_to_include_rect; Rect);
 
         methods.add_method_mut("set_width_range", |_, ui, (min, max): (f32, f32)| {
             ui.set_width_range(min..=max);
@@ -108,18 +110,18 @@ impl<'a> TealData for Ui<'a> {
             Ok(())
         });
 
-        add_method_mut!(methods, set_width, f32);
-        add_method_mut!(methods, set_height, f32);
+        wrap_method!(mm; set_width; f32);
+        wrap_method!(mm; set_height; f32);
 
-        add_method_mut!(methods, expand_to_include_x, f32);
-        add_method_mut!(methods, expand_to_include_y, f32);
+        wrap_method!(mm; expand_to_include_x; f32);
+        wrap_method!(mm; expand_to_include_y; f32);
 
         // layout related measures
-        add_method!(methods, available_size, (), Vec2);
-        add_method!(methods, available_width, (), f32);
-        add_method!(methods, available_height, (), f32);
-        add_method!(methods, available_size_before_wrap, (), Vec2);
-        add_method!(methods, available_rect_before_wrap, (), Rect);
+        wrap_method!(m; available_size;; Vec2);
+        wrap_method!(m; available_width;; f32);
+        wrap_method!(m; available_height;; f32);
+        wrap_method!(m; available_size_before_wrap;; Vec2);
+        wrap_method!(m; available_rect_before_wrap;; Rect);
 
         // Id creation
         methods.document("use this function to get a unique ID for your widget. you need to provide something that will remain unique for your widget. maybe its name or its position or whatever. but completely unique to this widget");
@@ -128,26 +130,27 @@ impl<'a> TealData for Ui<'a> {
         });
 
         // Interaction
-        add_method!(methods, interact, Rect ; Id ; Sense, Response);
-        add_method!(methods, rect_contains_pointer, Rect, bool);
-        add_method!(methods, ui_contains_pointer, (), bool);
+        wrap_method!(m; interact; Rect , Id , Sense; Response);
+        wrap_method!(m; rect_contains_pointer; Rect; bool);
+        wrap_method!(m; ui_contains_pointer; ; bool);
 
         // Allocating space
-        add_method_mut!(methods, allocate_response, Vec2 ; Sense, Response);
-        add_method_mut!(methods, allocate_exact_size, Vec2 ; Sense, Rect ; Response);
-        add_method_mut!(methods, allocate_at_least, Vec2 ; Sense, Rect ; Response);
-        add_method_mut!(methods, allocate_space, Vec2 , Id ; Rect );
-        add_method_mut!(methods, allocate_rect, Rect ; Sense, Response );
+        wrap_method!(mm; allocate_response; Vec2 , Sense; Response);
+        wrap_method!(mm; allocate_exact_size; Vec2 , Sense; Rect , Response);
+        wrap_method!(mm; allocate_at_least; Vec2 , Sense; Rect , Response);
+        wrap_method!(mm; allocate_space; Vec2 ; Id, Rect);
+        wrap_method!(mm; allocate_rect; Rect , Sense; Response );
 
-        add_method!(methods, cursor, (), Rect);
-        add_method!(methods, next_widget_position, (), Vec2);
+        wrap_method!(m; cursor;; Rect);
+
+        wrap_method!(m; next_widget_position; ; Vec2);
         // TODO: allocate ui
         // TODO: allocate ui with layout
         // TODO: allocate ui at rect
-        add_method_mut!(methods, allocate_painter, Vec2 ; Sense, Response ; Painter);
-        // TODO: add_method!(methods, scroll_to_rect, Rect ; Option<Align>);
+        wrap_method!(mm; allocate_painter; Vec2 , Sense; Response , Painter; {let result = (result.0.into(), result.1.into());});
+        // TODO: wrap_method!(m; scroll_to_rect, Rect ; Option<Align>);
         // TODO: scroll_to_cursor
-        add_method!(methods, scroll_with_delta, Vec2);
+        wrap_method!(m; scroll_with_delta; Vec2);
 
         // adding Widgets
         methods.document(r#"
@@ -213,7 +216,7 @@ impl<'a> TealData for Ui<'a> {
                 ))
             },
         );
-        add_method_mut!(methods, add_space, f32);
+        wrap_method!(mm; add_space; f32);
         methods.add_method_mut("button", |_, ui, text: IntoWidgetText| {
             Ok(Response::from(ui.button(text)))
         });
@@ -288,7 +291,7 @@ impl<'a> TealData for Ui<'a> {
                 Ok(Response::from(ui.selectable_label(selected, text)))
             },
         );
-        add_method_mut!(methods, separator, (), Response);
+        wrap_method!(mm; separator;; Response);
         methods.add_method_mut("small", |_, ui, rich_text: IntoRichText| {
             Ok(Response::from(ui.small(rich_text)))
         });
@@ -296,7 +299,7 @@ impl<'a> TealData for Ui<'a> {
             Ok(Response::from(ui.small_button(text)))
         });
 
-        add_method_mut!(methods, spinner, (), Response);
+        wrap_method!(mm; spinner;; Response);
         methods.add_method_mut("strong", |_, ui, rich_text: IntoRichText| {
             Ok(Response::from(ui.strong(rich_text)))
         });
@@ -482,8 +485,8 @@ impl<'a> TealData for Ui<'a> {
                 inner_response.inner,
             ))
         });
-        add_method_mut!(methods, end_row);
-        add_method_mut!(methods, set_row_height, f32);
+        wrap_method!(mm; end_row);
+        wrap_method!(mm; set_row_height; f32;);
         methods.document(
             "unlike other ui callbacks, this callback is given an array (table) of Ui objects",
         );
@@ -518,7 +521,8 @@ impl<'a> TealData for Ui<'a> {
             });
             Ok(response)
         });
-        add_method_mut!(methods, close_menu);
+
+        wrap_method!(mm; close_menu;);
         methods.add_method_mut(
             "menu_button",
             |lua, ui, (a0, a1): (IntoWidgetText, Function)| {
@@ -532,16 +536,14 @@ impl<'a> TealData for Ui<'a> {
             },
         );
         // debug stuff
-        add_method!(methods, debug_paint_cursor);
+        wrap_method!(m; debug_paint_cursor);
 
-        methods.add_method("trace_location", |_, ui, a0: String| {
-            ui.trace_location(a0);
-            Ok(())
-        })
+        // luaegui_derive::wrap_method!(m; trace_location; String nointo);
+        // wrap_method!(m; trace_location, String);
     }
 }
 
-fn ui_add_fn(lua: &Lua, ui: &mut Ui, table: Table) -> Result<Response, mlua::Error> {
+fn ui_add_fn(lua: &Lua, ui: &mut Ui, table: Table) -> Result<Response> {
     use tealr::mlu::mlua::String;
     let widget_name: String = table.get("widget_type")?;
     match widget_name.to_str()? {

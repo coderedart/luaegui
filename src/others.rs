@@ -1,9 +1,13 @@
 use std::sync::Arc;
 
 use derive_more::*;
-use tealr::mlu::*;
+use luaegui_derive::wrap_method;
+use tealr::mlu::{
+    mlua::{Lua, Result},
+    *,
+};
 
-use crate::{add_fields, add_method, add_method_mut, wrapper};
+use crate::{add_fields, wrapper};
 wrapper!(Shape egui::epaint::Shape);
 impl TealData for Shape {
     fn add_methods<'lua, T: TealDataMethods<'lua, Self>>(methods: &mut T) {
@@ -20,10 +24,7 @@ impl TealData for Shape {
             )))
         });
         {
-            fn line_segment(
-                _: &mlua::Lua,
-                (a0, a1): ([Pos2; 2], Stroke),
-            ) -> Result<Shape, mlua::Error> {
+            fn line_segment(_: &mlua::Lua, (a0, a1): ([Pos2; 2], Stroke)) -> Result<Shape> {
                 Ok(Shape::from(egui::epaint::Shape::line_segment(
                     [a0[0].into(), a0[1].into()],
                     a1,
@@ -45,8 +46,8 @@ impl TealData for Shape {
             )))
         });
 
-        add_method!(methods, texture_id, (), TextureId);
-        add_method_mut!(methods, translate, Vec2);
+        wrap_method!(m; texture_id;; TextureId);
+        wrap_method!(mm; translate; Vec2);
     }
 
     fn add_fields<'lua, F: TealDataFields<'lua, Self>>(_fields: &mut F) {}
@@ -56,7 +57,7 @@ wrapper!(copy CircleShape egui::epaint::CircleShape);
 impl TealData for CircleShape {
     fn add_methods<'lua, T: TealDataMethods<'lua, Self>>(methods: &mut T) {
         // filled and stroke
-        add_method!(methods, visual_bounding_rect, (), Rect);
+        wrap_method!(m; visual_bounding_rect;; Rect);
     }
 
     fn add_fields<'lua, F: TealDataFields<'lua, Self>>(fields: &mut F) {
@@ -74,7 +75,7 @@ wrapper!(PathShape egui::epaint::PathShape);
 impl TealData for PathShape {
     fn add_methods<'lua, T: TealDataMethods<'lua, Self>>(methods: &mut T) {
         // closed line, convexpolygon, line
-        add_method!(methods, visual_bounding_rect, (), Rect);
+        wrap_method!(m; visual_bounding_rect;; Rect);
     }
 
     fn add_fields<'lua, F: TealDataFields<'lua, Self>>(fields: &mut F) {
@@ -107,16 +108,16 @@ impl TealData for TextShape {
             "egui docs link: https://docs.rs/epaint/latest/epaint/struct.TextShape.html#",
         );
         methods.add_function("new", |_, (a0, a1): (Pos2, Galley)| {
-            Ok(Self(egui::epaint::TextShape::new(a0.into(), a1.0.clone())))
+            Ok(Self(egui::epaint::TextShape::new(a0.into(), a1.0)))
         });
-        add_method!(methods, visual_bounding_rect, (), Rect);
+        wrap_method!(m; visual_bounding_rect;; Rect);
     }
 
     fn add_fields<'lua, F: TealDataFields<'lua, Self>>(fields: &mut F) {
         add_fields!(fields, pos: Pos2, underline: Stroke, angle: f32);
         fields.add_field_method_get("galley", |_, s| Ok(Galley::from(s.galley.clone())));
         fields.add_field_method_set("galley", |_, s, a0: Galley| {
-            s.galley = a0.0.clone();
+            s.galley = a0.0;
             Ok(())
         });
 
@@ -142,9 +143,9 @@ impl TealData for Margin {
         methods.add_function("symmetric", |_, (a0, a1): (f32, f32)| {
             Ok(Margin(egui::style::Margin::symmetric(a0, a1)))
         });
-        add_method!(methods, sum, (), Vec2);
-        add_method!(methods, left_top, (), Vec2);
-        add_method!(methods, right_bottom, (), Vec2);
+        wrap_method!(m; sum;; Vec2);
+        wrap_method!(m; left_top;; Vec2);
+        wrap_method!(m; right_bottom;; Vec2);
     }
 
     fn add_fields<'lua, F: TealDataFields<'lua, Self>>(fields: &mut F) {
@@ -156,11 +157,12 @@ impl TealData for Stroke {
     fn add_methods<'lua, T: TealDataMethods<'lua, Self>>(methods: &mut T) {
         methods
             .document_type("egui docs link: https://docs.rs/egui/latest/egui/struct.Stroke.html");
+
         methods.add_function("none", |_, ()| Ok(Self::from(egui::Stroke::none())));
         methods.add_function("new", |_, (a0, a1): (f32, Color32)| {
             Ok(Self::from(egui::Stroke::new(a0, a1)))
         });
-        add_method!(methods, is_empty, (), bool);
+        wrap_method!(m; is_empty;; bool);
     }
 
     fn add_fields<'lua, F: TealDataFields<'lua, Self>>(fields: &mut F) {
@@ -176,9 +178,9 @@ impl TealData for Rounding {
             Ok(Self::from(egui::Rounding::same(a0)))
         });
         methods.add_function("none", |_, ()| Ok(Self::from(egui::Rounding::none())));
-        add_method!(methods, is_same, (), bool);
-        add_method!(methods, at_least, f32, Rounding);
-        add_method!(methods, at_most, f32, Rounding);
+        wrap_method!(m; is_same;; bool);
+        wrap_method!(m; at_least; f32; Rounding);
+        wrap_method!(m; at_most; f32; Rounding);
     }
 
     fn add_fields<'lua, F: TealDataFields<'lua, Self>>(fields: &mut F) {
@@ -191,7 +193,7 @@ impl TealData for Spacing {
         methods.document_type(
             "egui docs link: https://docs.rs/egui/latest/egui/style/struct.Spacing.html",
         );
-        add_method!(methods, icon_rectangles, Rect, Rect ; Rect);
+        wrap_method!(m; icon_rectangles; Rect; Rect, Rect);
     }
 
     fn add_fields<'lua, F: TealDataFields<'lua, Self>>(fields: &mut F) {
@@ -214,9 +216,112 @@ impl TealData for Spacing {
         );
     }
 }
+wrapper!(copy default Shadow egui::epaint::Shadow);
+impl TealData for Shadow {
+    fn add_fields<'lua, F: TealDataFields<'lua, Self>>(fields: &mut F) {
+        add_fields!(fields, extrusion: f32, color: Color32);
+    }
+}
 
+wrapper!(copy WidgetVisuals egui::style::WidgetVisuals);
+impl TealData for WidgetVisuals {
+    fn add_methods<'lua, T: TealDataMethods<'lua, Self>>(methods: &mut T) {
+        wrap_method!(m; text_color;; Color32);
+    }
+
+    fn add_fields<'lua, F: TealDataFields<'lua, Self>>(fields: &mut F) {
+        add_fields!(
+            fields,
+            bg_fill: Color32,
+            bg_stroke: Stroke,
+            rounding: Rounding,
+            fg_stroke: Stroke,
+            expansion: f32
+        );
+    }
+}
+wrapper!(Widgets egui::style::Widgets);
+impl TealData for Widgets {
+    fn add_methods<'lua, T: TealDataMethods<'lua, Self>>(_methods: &mut T) {}
+
+    fn add_fields<'lua, F: TealDataFields<'lua, Self>>(fields: &mut F) {
+        add_fields!(
+            fields,
+            noninteractive: WidgetVisuals,
+            inactive: WidgetVisuals,
+            hovered: WidgetVisuals,
+            active: WidgetVisuals,
+            open: WidgetVisuals
+        );
+    }
+}
+wrapper!(copy Selection egui::style::Selection);
+impl TealData for Selection {
+    fn add_methods<'lua, T: TealDataMethods<'lua, Self>>(_methods: &mut T) {}
+
+    fn add_fields<'lua, F: TealDataFields<'lua, Self>>(fields: &mut F) {
+        add_fields!(fields, bg_fill: Color32, stroke: Stroke);
+    }
+}
+wrapper!(Interaction egui::style::Interaction);
+impl TealData for Interaction {
+    fn add_methods<'lua, T: TealDataMethods<'lua, Self>>(_methods: &mut T) {}
+
+    fn add_fields<'lua, F: TealDataFields<'lua, Self>>(fields: &mut F) {
+        add_fields!(
+            fields,
+            resize_grab_radius_side: f32,
+            resize_grab_radius_corner: f32,
+            show_tooltips_only_when_still: bool
+        );
+    }
+}
 wrapper!(Visuals egui::style::Visuals);
-impl TealData for Visuals {}
+impl TealData for Visuals {
+    fn add_methods<'lua, T: TealDataMethods<'lua, Self>>(methods: &mut T) {
+        methods.add_method("noninteractive", |_, s, ()| {
+            Ok(WidgetVisuals::from(*s.noninteractive()))
+        });
+        wrap_method!(m; text_color;; Color32);
+        wrap_method!(m; weak_text_color;; Color32);
+        wrap_method!(m; strong_text_color;; Color32);
+        wrap_method!(m; window_fill;; Color32);
+        wrap_method!(m; window_stroke;; Stroke);
+    }
+
+    fn add_fields<'lua, F: TealDataFields<'lua, Self>>(fields: &mut F) {
+        fields.add_field_method_get("override_text_color", |_, s| {
+            Ok(s.override_text_color.map(Color32::from))
+        });
+        fields.add_field_method_set("override_text_color", |_, s, a0: Option<Color32>| {
+            s.override_text_color = a0.map(|a| a.into());
+            Ok(())
+        });
+        fields.add_field_method_get("widgets", |_, s| Ok(Widgets::from(s.widgets.clone())));
+        fields.add_field_method_set("widgets", |_, s, a0: Widgets| {
+            s.widgets = a0.into();
+            Ok(())
+        });
+        add_fields!(
+            fields,
+            dark_mode: bool,
+            selection: Selection,
+            hyperlink_color: Color32,
+            faint_bg_color: Color32,
+            extreme_bg_color: Color32,
+            code_bg_color: Color32,
+            window_rounding: Rounding,
+            window_shadow: Shadow,
+            popup_shadow: Shadow,
+            resize_corner_size: f32,
+            text_cursor_width: f32,
+            text_cursor_preview: bool,
+            clip_rect_margin: f32,
+            button_frame: bool,
+            collapsing_header_frame: bool
+        );
+    }
+}
 
 wrapper!(TextStyle egui::TextStyle);
 impl TealData for TextStyle {}
@@ -242,17 +347,62 @@ wrapper!(RichText egui::RichText);
 impl TealData for RichText {}
 
 wrapper!(WidgetText egui::WidgetText);
-impl TealData for WidgetText {}
+impl TealData for WidgetText {
+    fn add_methods<'lua, T: TealDataMethods<'lua, Self>>(methods: &mut T) {
+        wrap_method!(m; is_empty;; bool);
+        wrap_method!(m; text;; String);
+    }
 
-wrapper!(TextureId egui::TextureId);
+    fn add_fields<'lua, F: TealDataFields<'lua, Self>>(_fields: &mut F) {}
+}
+
+wrapper!(copy default TextureId egui::TextureId);
 impl TealData for TextureId {}
 
 wrapper!(copy default Vec2 egui::Vec2);
 
+// #[derive(Clone, Copy, Default, AsRef, AsMut, Deref, DerefMut)]
+// pub struct Wrapper<T>(T);
+
+// impl<T> From<T> for Wrapper<T> {
+//     fn from(t: T) -> Self {
+//         Self(t)
+//     }
+// }
+// impl<> From<Wrapper<T>> for T {
+//     fn from(wt: Wrapper<T>) -> Self {
+//         wt.0
+//     }
+// }
+
 wrapper!(copy default Pos2 egui::Pos2);
-impl TealData for Pos2 {}
+impl TealData for Pos2 {
+    fn add_methods<'lua, T: TealDataMethods<'lua, Self>>(methods: &mut T) {
+        wrap_method!(m; to_vec2;; Vec2);
+        wrap_method!(m; distance; Pos2; f32);
+        wrap_method!(m; distance_sq; Pos2; f32);
+        wrap_method!(m; floor;; Pos2);
+        wrap_method!(m; round;; Pos2);
+        wrap_method!(m; ceil;; Pos2);
+        wrap_method!(m; is_finite;; bool);
+        wrap_method!(m; any_nan;; bool);
+        wrap_method!(m; min; Pos2; Pos2);
+        wrap_method!(m; max; Pos2; Pos2);
+        wrap_method!(m; clamp; Pos2, Pos2; Pos2);
+    }
+
+    fn add_fields<'lua, F: TealDataFields<'lua, Self>>(_fields: &mut F) {}
+}
 wrapper!(copy Sense egui::Sense);
-impl TealData for Sense {}
+impl TealData for Sense {
+    fn add_methods<'lua, T: TealDataMethods<'lua, Self>>(methods: &mut T) {
+        wrap_method!(m; interactive;; bool);
+    }
+
+    fn add_fields<'lua, F: TealDataFields<'lua, Self>>(fields: &mut F) {
+        add_fields!(fields, click: bool, drag: bool, focusable: bool);
+    }
+}
 
 wrapper!(copy default Align egui::Align);
 impl TealData for Align {}
@@ -265,7 +415,7 @@ impl TealData for CursorIcon {}
 
 impl TealData for Color32 {
     fn add_methods<'lua, T: TealDataMethods<'lua, Self>>(methods: &mut T) {
-        methods.add_function("default", |_, ()| Ok(Color32::default()));
+        wrap_method!(f; default;; Color32);
     }
 
     fn add_fields<'lua, F: TealDataFields<'lua, Self>>(fields: &mut F) {

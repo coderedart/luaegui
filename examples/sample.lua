@@ -27,6 +27,7 @@ On_gui = function(ctx)
                 My_plugin.background = background
                 columns[2]:label("column 2")
                 columns[3]:label("column 3")
+                print(columns[3]:next_widget_position())
             end)
             if inner:clicked() then
                 print("inner")
