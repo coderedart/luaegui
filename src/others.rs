@@ -3,7 +3,7 @@ use std::sync::Arc;
 use derive_more::*;
 use tealr::mlu::*;
 
-use crate::{add_fields, add_method, wrapper, add_method_mut};
+use crate::{add_fields, add_method, add_method_mut, wrapper};
 wrapper!(Shape egui::epaint::Shape);
 impl TealData for Shape {
     fn add_methods<'lua, T: TealDataMethods<'lua, Self>>(methods: &mut T) {
@@ -18,8 +18,12 @@ impl TealData for Shape {
                 [a0[0].into(), a0[1].into()],
                 a1,
             )))
-        });{
-            fn line_segment(_: &mlua::Lua, (a0, a1) : ([Pos2; 2],  Stroke)) -> Result<Shape, mlua::Error> {
+        });
+        {
+            fn line_segment(
+                _: &mlua::Lua,
+                (a0, a1): ([Pos2; 2], Stroke),
+            ) -> Result<Shape, mlua::Error> {
                 Ok(Shape::from(egui::epaint::Shape::line_segment(
                     [a0[0].into(), a0[1].into()],
                     a1,
@@ -27,7 +31,7 @@ impl TealData for Shape {
             }
             methods.add_function("line_segment", line_segment);
         }
-        
+
         methods.add_function("line_segment", |_, (a0, a1): ([Pos2; 2], Stroke)| {
             Ok(Shape::from(egui::epaint::Shape::line_segment(
                 [a0[0].into(), a0[1].into()],
@@ -56,11 +60,12 @@ impl TealData for CircleShape {
     }
 
     fn add_fields<'lua, F: TealDataFields<'lua, Self>>(fields: &mut F) {
-        add_fields!(fields,
-        center: Pos2,
-        radius : f32,
-        fill: Color32,
-        stroke: Stroke
+        add_fields!(
+            fields,
+            center: Pos2,
+            radius: f32,
+            fill: Color32,
+            stroke: Stroke
         );
     }
 }
@@ -73,17 +78,12 @@ impl TealData for PathShape {
     }
 
     fn add_fields<'lua, F: TealDataFields<'lua, Self>>(fields: &mut F) {
-        add_fields!(fields,
-        closed: bool,
-        fill: Color32,
-        stroke: Stroke
-        );
+        add_fields!(fields, closed: bool, fill: Color32, stroke: Stroke);
         fields.add_field_method_get("points", |_, s| {
             Ok(s.points.iter().map(Pos2::from).collect::<Vec<_>>())
         })
     }
 }
-
 
 wrapper!(copy RectShape egui::epaint::RectShape);
 impl TealData for RectShape {
