@@ -150,6 +150,20 @@ macro_rules! wrapper {
     };
 
 }
+#[macro_export]
+macro_rules! add_fields {
+    ($fields:ident, $($field_name:ident : $field_type:ty),*) => {
+        $(
+        $fields.add_field_method_get(stringify!($field_name), |_, s| {
+            Ok(<$field_type>::from(s.$field_name))
+        });
+        $fields.add_field_method_set(stringify!($field_name), |_, s, a0: $field_type| {
+            s.$field_name = a0.into();
+            Ok(())
+        });
+    )*
+    };
+}
 /// this macro can be used to do the recurring task of wrapping methods for lua
 /// Args:
 /// * $methods : the name of the `&mut T: UserDataMethods` struct we are given in the impl of `TealData` for `add_methods` function

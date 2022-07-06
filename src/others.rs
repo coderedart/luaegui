@@ -3,7 +3,102 @@ use std::sync::Arc;
 use derive_more::*;
 use tealr::mlu::*;
 
-use crate::{add_method, wrapper};
+use crate::{add_fields, add_method, wrapper, add_method_mut};
+wrapper!(Shape egui::epaint::Shape);
+impl TealData for Shape {
+    fn add_methods<'lua, T: TealDataMethods<'lua, Self>>(methods: &mut T) {
+        methods.add_function("line_segment", |_, (a0, a1): ([Pos2; 2], Stroke)| {
+            Ok(Shape::from(egui::epaint::Shape::line_segment(
+                [a0[0].into(), a0[1].into()],
+                a1,
+            )))
+        });
+        methods.add_function("line_segment", |_, (a0, a1): ([Pos2; 2], Stroke)| {
+            Ok(Shape::from(egui::epaint::Shape::line_segment(
+                [a0[0].into(), a0[1].into()],
+                a1,
+            )))
+        });{
+            fn line_segment(_: &mlua::Lua, (a0, a1) : ([Pos2; 2],  Stroke)) -> Result<Shape, mlua::Error> {
+                Ok(Shape::from(egui::epaint::Shape::line_segment(
+                    [a0[0].into(), a0[1].into()],
+                    a1,
+                )))
+            }
+            methods.add_function("line_segment", line_segment);
+        }
+        
+        methods.add_function("line_segment", |_, (a0, a1): ([Pos2; 2], Stroke)| {
+            Ok(Shape::from(egui::epaint::Shape::line_segment(
+                [a0[0].into(), a0[1].into()],
+                a1,
+            )))
+        });
+        methods.add_function("line_segment", |_, (a0, a1): ([Pos2; 2], Stroke)| {
+            Ok(Shape::from(egui::epaint::Shape::line_segment(
+                [a0[0].into(), a0[1].into()],
+                a1,
+            )))
+        });
+
+        add_method!(methods, texture_id, (), TextureId);
+        add_method_mut!(methods, translate, Vec2);
+    }
+
+    fn add_fields<'lua, F: TealDataFields<'lua, Self>>(_fields: &mut F) {}
+}
+
+wrapper!(copy CircleShape egui::epaint::CircleShape);
+impl TealData for CircleShape {
+    fn add_methods<'lua, T: TealDataMethods<'lua, Self>>(methods: &mut T) {
+        // filled and stroke
+        add_method!(methods, visual_bounding_rect, (), Rect);
+    }
+
+    fn add_fields<'lua, F: TealDataFields<'lua, Self>>(fields: &mut F) {
+        add_fields!(fields,
+        center: Pos2,
+        radius : f32,
+        fill: Color32,
+        stroke: Stroke
+        );
+    }
+}
+
+wrapper!(PathShape egui::epaint::PathShape);
+impl TealData for PathShape {
+    fn add_methods<'lua, T: TealDataMethods<'lua, Self>>(methods: &mut T) {
+        // closed line, convexpolygon, line
+        add_method!(methods, visual_bounding_rect, (), Rect);
+    }
+
+    fn add_fields<'lua, F: TealDataFields<'lua, Self>>(fields: &mut F) {
+        add_fields!(fields,
+        closed: bool,
+        fill: Color32,
+        stroke: Stroke
+        );
+        fields.add_field_method_get("points", |_, s| {
+            Ok(s.points.iter().map(Pos2::from).collect::<Vec<_>>())
+        })
+    }
+}
+
+
+wrapper!(copy RectShape egui::epaint::RectShape);
+impl TealData for RectShape {
+    fn add_methods<'lua, T: TealDataMethods<'lua, Self>>(_methods: &mut T) {}
+
+    fn add_fields<'lua, F: TealDataFields<'lua, Self>>(fields: &mut F) {
+        add_fields!(
+            fields,
+            rect: Rect,
+            rounding: Rounding,
+            fill: Color32,
+            stroke: Stroke
+        );
+    }
+}
 
 wrapper!(TextShape egui::epaint::TextShape);
 impl TealData for TextShape {
@@ -18,31 +113,18 @@ impl TealData for TextShape {
     }
 
     fn add_fields<'lua, F: TealDataFields<'lua, Self>>(fields: &mut F) {
-        fields.add_field_method_get("pos", |_, s| Ok(Pos2::from(s.pos)));
-        fields.add_field_method_set("pos", |_, s, a0: Pos2| {
-            s.pos = a0.into();
-            Ok(())
-        });
+        add_fields!(fields, pos: Pos2, underline: Stroke, angle: f32);
         fields.add_field_method_get("galley", |_, s| Ok(Galley::from(s.galley.clone())));
         fields.add_field_method_set("galley", |_, s, a0: Galley| {
             s.galley = a0.0.clone();
             Ok(())
         });
-        fields.add_field_method_get("underline", |_, s| Ok(Stroke::from(s.underline)));
-        fields.add_field_method_set("underline", |_, s, a0: Stroke| {
-            s.underline = a0.into();
-            Ok(())
-        });
+
         fields.add_field_method_get("override_text_color", |_, s| {
             Ok(s.override_text_color.map(Color32::from))
         });
         fields.add_field_method_set("override_text_color", |_, s, a0: Option<Color32>| {
             s.override_text_color = a0.map(|a| a.into());
-            Ok(())
-        });
-        fields.add_field_method_get("angle", |_, s| Ok(s.angle));
-        fields.add_field_method_set("angle", |_, s, a0: f32| {
-            s.angle = a0;
             Ok(())
         });
     }
@@ -66,26 +148,7 @@ impl TealData for Margin {
     }
 
     fn add_fields<'lua, F: TealDataFields<'lua, Self>>(fields: &mut F) {
-        fields.add_field_method_get("left", |_, s| Ok(s.left));
-        fields.add_field_method_set("left", |_, s, a0: f32| {
-            s.left = a0;
-            Ok(())
-        });
-        fields.add_field_method_get("right", |_, s| Ok(s.right));
-        fields.add_field_method_set("right", |_, s, a0: f32| {
-            s.right = a0;
-            Ok(())
-        });
-        fields.add_field_method_get("top", |_, s| Ok(s.top));
-        fields.add_field_method_set("top", |_, s, a0: f32| {
-            s.top = a0;
-            Ok(())
-        });
-        fields.add_field_method_get("bottom", |_, s| Ok(s.bottom));
-        fields.add_field_method_set("bottom", |_, s, a0: f32| {
-            s.bottom = a0;
-            Ok(())
-        });
+        add_fields!(fields, left: f32, right: f32, top: f32, bottom: f32);
     }
 }
 wrapper!(copy default Stroke egui::Stroke);
@@ -101,16 +164,7 @@ impl TealData for Stroke {
     }
 
     fn add_fields<'lua, F: TealDataFields<'lua, Self>>(fields: &mut F) {
-        fields.add_field_method_get("width", |_, s| Ok(s.width));
-        fields.add_field_method_set("width", |_, s, a0: f32| {
-            s.width = a0;
-            Ok(())
-        });
-        fields.add_field_method_get("color", |_, s| Ok(Color32::from(s.color)));
-        fields.add_field_method_set("color", |_, s, a0: Color32| {
-            s.color = a0.into();
-            Ok(())
-        });
+        add_fields!(fields, width: f32, color: Color32);
     }
 }
 wrapper!(copy default Rounding egui::Rounding);
@@ -128,26 +182,7 @@ impl TealData for Rounding {
     }
 
     fn add_fields<'lua, F: TealDataFields<'lua, Self>>(fields: &mut F) {
-        fields.add_field_method_get("nw", |_, s| Ok(s.nw));
-        fields.add_field_method_set("nw", |_, s, a0: f32| {
-            s.nw = a0;
-            Ok(())
-        });
-        fields.add_field_method_get("ne", |_, s| Ok(s.ne));
-        fields.add_field_method_set("ne", |_, s, a0: f32| {
-            s.ne = a0;
-            Ok(())
-        });
-        fields.add_field_method_get("sw", |_, s| Ok(s.sw));
-        fields.add_field_method_set("sw", |_, s, a0: f32| {
-            s.sw = a0;
-            Ok(())
-        });
-        fields.add_field_method_get("se", |_, s| Ok(s.se));
-        fields.add_field_method_set("se", |_, s, a0: f32| {
-            s.se = a0;
-            Ok(())
-        });
+        add_fields!(fields, nw: f32, ne: f32, sw: f32, se: f32);
     }
 }
 wrapper!(Spacing egui::style::Spacing);
@@ -160,78 +195,23 @@ impl TealData for Spacing {
     }
 
     fn add_fields<'lua, F: TealDataFields<'lua, Self>>(fields: &mut F) {
-        fields.add_field_method_get("item_spacing", |_, s| Ok(Vec2::from(s.item_spacing)));
-        fields.add_field_method_set("item_spacing", |_, s, a0: Vec2| {
-            s.item_spacing = a0.into();
-            Ok(())
-        });
-        fields.add_field_method_get("window_margin", |_, s| Ok(Margin::from(s.window_margin)));
-        fields.add_field_method_set("window_margin", |_, s, a0: Margin| {
-            s.window_margin = a0.into();
-            Ok(())
-        });
-        fields.add_field_method_get("button_padding", |_, s| Ok(Vec2::from(s.button_padding)));
-        fields.add_field_method_set("button_padding", |_, s, a0: Vec2| {
-            s.button_padding = a0.into();
-            Ok(())
-        });
-        fields.add_field_method_get("indent", |_, s| Ok(s.indent));
-        fields.add_field_method_set("indent", |_, s, a0: f32| {
-            s.indent = a0;
-            Ok(())
-        });
-        fields.add_field_method_get("interact_size", |_, s| Ok(Vec2::from(s.interact_size)));
-        fields.add_field_method_set("interact_size", |_, s, a0: Vec2| {
-            s.interact_size = a0.into();
-            Ok(())
-        });
-        fields.add_field_method_get("slider_width", |_, s| Ok(s.slider_width));
-        fields.add_field_method_set("slider_width", |_, s, a0: f32| {
-            s.slider_width = a0;
-            Ok(())
-        });
-        fields.add_field_method_get("text_edit_width", |_, s| Ok(s.text_edit_width));
-        fields.add_field_method_set("text_edit_width", |_, s, a0: f32| {
-            s.text_edit_width = a0.into();
-            Ok(())
-        });
-        fields.add_field_method_get("icon_width", |_, s| Ok(s.icon_width));
-        fields.add_field_method_set("icon_width", |_, s, a0: f32| {
-            s.icon_width = a0.into();
-            Ok(())
-        });
-        fields.add_field_method_get("icon_width_inner", |_, s| Ok(s.icon_width_inner));
-        fields.add_field_method_set("icon_width_inner", |_, s, a0: f32| {
-            s.icon_width_inner = a0.into();
-            Ok(())
-        });
-        fields.add_field_method_get("icon_spacing", |_, s| Ok(s.icon_spacing));
-        fields.add_field_method_set("icon_spacing", |_, s, a0: f32| {
-            s.icon_spacing = a0.into();
-            Ok(())
-        });
-        fields.add_field_method_get("tooltip_width", |_, s| Ok(s.tooltip_width));
-        fields.add_field_method_set("tooltip_width", |_, s, a0: f32| {
-            s.tooltip_width = a0.into();
-            Ok(())
-        });
-        fields.add_field_method_get("indent_ends_with_horizontal_line", |_, s| {
-            Ok(s.indent_ends_with_horizontal_line)
-        });
-        fields.add_field_method_set("indent_ends_with_horizontal_line", |_, s, a0: bool| {
-            s.indent_ends_with_horizontal_line = a0.into();
-            Ok(())
-        });
-        fields.add_field_method_get("combo_height", |_, s| Ok(s.combo_height));
-        fields.add_field_method_set("combo_height", |_, s, a0: f32| {
-            s.combo_height = a0.into();
-            Ok(())
-        });
-        fields.add_field_method_get("scroll_bar_width", |_, s| Ok(s.scroll_bar_width));
-        fields.add_field_method_set("scroll_bar_width", |_, s, a0: f32| {
-            s.scroll_bar_width = a0.into();
-            Ok(())
-        });
+        add_fields!(
+            fields,
+            item_spacing: Vec2,
+            window_margin: Margin,
+            button_padding: Vec2,
+            indent: f32,
+            interact_size: Vec2,
+            slider_width: f32,
+            text_edit_width: f32,
+            icon_width: f32,
+            icon_width_inner: f32,
+            icon_spacing: f32,
+            tooltip_width: f32,
+            indent_ends_with_horizontal_line: bool,
+            combo_height: f32,
+            scroll_bar_width: f32
+        );
     }
 }
 
@@ -455,16 +435,7 @@ impl TealData for Vec2 {
     }
 
     fn add_fields<'lua, F: TealDataFields<'lua, Self>>(fields: &mut F) {
-        fields.add_field_method_get("x", |_, v| Ok(v.x));
-        fields.add_field_method_get("y", |_, v| Ok(v.y));
-        fields.add_field_method_set("x", |_, v, x: f32| {
-            v.x = x;
-            Ok(())
-        });
-        fields.add_field_method_set("y", |_, v, y: f32| {
-            v.y = y;
-            Ok(())
-        });
+        add_fields!(fields, x: f32, y: f32);
     }
 }
 
