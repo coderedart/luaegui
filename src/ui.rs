@@ -90,6 +90,7 @@ impl<'a> TealData for Ui<'a> {
 
         // Size related functions
         wrap_method!(m; min_rect;; Rect);
+        wrap_method!(m; min_size;; Vec2);
         wrap_method!(m; max_rect;; Rect);
         wrap_method!(mm; set_max_size; Vec2);
         wrap_method!(mm; set_max_width; f32);

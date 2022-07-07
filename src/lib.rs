@@ -32,6 +32,8 @@ pub fn register_egui_lua_bindings(lua: &Lua) -> Result<(), mlua::Error> {
     egui_proxy.set("rich_text", lua.create_proxy::<RichText>()?)?;
     egui_proxy.set("ui_docs", lua.create_proxy::<Ui>()?)?;
     egui_proxy.set("widget_text", lua.create_proxy::<WidgetText>()?)?;
+    egui_proxy.set("vec2", lua.create_proxy::<Vec2>()?)?;
+
     lua.globals().set("Egui", egui_proxy)?;
     Ok(())
 }
@@ -95,7 +97,21 @@ pub fn get_all_types() -> TypeWalker {
         .process_type::<TextureHandle>()
         .process_type::<Style>()
 }
-
+#[macro_export]
+macro_rules! wrapper_from_impl {
+    ($name:ident $etype:path) => {
+        impl From<$name> for $etype {
+            fn from(x: $name) -> Self {
+                x.0
+            }
+        }
+        impl From<&$name> for $etype {
+            fn from(x: &$name) -> Self {
+                x.clone().0
+            }
+        }
+    };
+}
 #[macro_export]
 macro_rules! from_impl {
     ($name:ident $etype:path) => {
@@ -125,28 +141,49 @@ macro_rules! from_impl {
 #[macro_export]
 macro_rules! wrapper {
     ( $name:ident  $etype:path) => {
-        #[derive(Clone, AsRef, AsMut, Deref, DerefMut, tealr::MluaTealDerive)]
-        pub struct $name(pub $etype);
 
-        $crate::from_impl!($name $etype);
+        pub type $name = Wrapper<$etype>;
+
+        impl TypeName for $name {
+            fn get_type_parts() -> std::borrow::Cow<'static, [tealr::NamePart]> {
+                new_type!($name)
+            }
+        }
+
+        $crate::wrapper_from_impl!($name $etype);
     };
     ( copy $name:ident  $etype:path) => {
-        #[derive(Clone, Copy, AsRef, AsMut, Deref, DerefMut, tealr::MluaTealDerive)]
-        pub struct $name(pub $etype);
+        pub type $name = Wrapper<$etype>;
 
-        $crate::from_impl!($name $etype);
+        impl TypeName for $name {
+            fn get_type_parts() -> std::borrow::Cow<'static, [tealr::NamePart]> {
+                new_type!($name)
+            }
+        }
+
+        $crate::wrapper_from_impl!($name $etype);
     };
     ( default $name:ident  $etype:path) => {
-        #[derive(Clone, Default, AsRef, AsMut, Deref, DerefMut, tealr::MluaTealDerive)]
-        pub struct $name(pub $etype);
+        pub type $name = Wrapper<$etype>;
 
-        $crate::from_impl!($name $etype);
+        impl TypeName for $name {
+            fn get_type_parts() -> std::borrow::Cow<'static, [tealr::NamePart]> {
+                new_type!($name)
+            }
+        }
+
+        $crate::wrapper_from_impl!($name $etype);
     };
     ( copy default $name:ident  $etype:path) => {
-        #[derive(Clone, Default, Copy, AsRef, AsMut, Deref, DerefMut, tealr::MluaTealDerive)]
-        pub struct $name(pub $etype);
+        pub type $name = Wrapper<$etype>;
 
-        $crate::from_impl!($name $etype);
+        impl TypeName for $name {
+            fn get_type_parts() -> std::borrow::Cow<'static, [tealr::NamePart]> {
+                new_type!($name)
+            }
+        }
+
+        $crate::wrapper_from_impl!($name $etype);
     };
 
 }

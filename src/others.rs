@@ -2,9 +2,12 @@ use std::sync::Arc;
 
 use derive_more::*;
 use luaegui_derive::wrap_method;
-use tealr::mlu::{
-    mlua::{Lua, Result},
-    *,
+use tealr::{
+    mlu::{
+        mlua::{Lua, Result, UserDataMethods},
+        *,
+    },
+    new_type, TypeBody, TypeName,
 };
 
 use crate::{add_fields, wrapper};
@@ -81,7 +84,7 @@ impl TealData for PathShape {
     fn add_fields<'lua, F: TealDataFields<'lua, Self>>(fields: &mut F) {
         add_fields!(fields, closed: bool, fill: Color32, stroke: Stroke);
         fields.add_field_method_get("points", |_, s| {
-            Ok(s.points.iter().map(Pos2::from).collect::<Vec<_>>())
+            Ok(s.points.iter().copied().map(Pos2::from).collect::<Vec<_>>())
         })
     }
 }
@@ -134,15 +137,17 @@ impl TealData for TextShape {
 wrapper!(copy default Margin egui::style::Margin);
 impl TealData for Margin {
     fn add_methods<'lua, T: TealDataMethods<'lua, Self>>(methods: &mut T) {
+        type InnerType = egui::style::Margin;
         methods.document_type(
             "egui docs link: https://docs.rs/egui/latest/egui/style/struct.Margin.html",
         );
-        methods.add_function("same", |_, a0: f32| {
-            Ok(Margin(egui::style::Margin::same(a0)))
-        });
-        methods.add_function("symmetric", |_, (a0, a1): (f32, f32)| {
-            Ok(Margin(egui::style::Margin::symmetric(a0, a1)))
-        });
+        wrap_method!(f; same; f32; Margin);
+        // methods.add_function("same", |_, a0: f32| {
+        //     Ok(Margin(egui::style::Margin::same(a0)))
+        // });
+        // methods.add_function("symmetric", |_, (a0, a1): (f32, f32)| {
+        //     Ok(Margin(egui::style::Margin::symmetric(a0, a1)))
+        // });
         wrap_method!(m; sum;; Vec2);
         wrap_method!(m; left_top;; Vec2);
         wrap_method!(m; right_bottom;; Vec2);
@@ -359,14 +364,64 @@ impl TealData for WidgetText {
 wrapper!(copy default TextureId egui::TextureId);
 impl TealData for TextureId {}
 
-wrapper!(copy default Vec2 egui::Vec2);
+// wrapper!(copy default Vec2 egui::Vec2);
+pub type Vec2 = Wrapper<egui::Vec2>;
 
-// #[derive(Clone, Copy, Default, AsRef, AsMut, Deref, DerefMut)]
-// pub struct Wrapper<T>(T);
+impl TypeName for Vec2 {
+    fn get_type_parts() -> std::borrow::Cow<'static, [tealr::NamePart]> {
+        new_type!(Vec2)
+    }
+}
 
-// impl<T> From<T> for Wrapper<T> {
-//     fn from(t: T) -> Self {
-//         Self(t)
+impl<T> TypeBody for Wrapper<T>
+where
+    Wrapper<T>: 'static + tealr::TypeName + tealr::mlu::TealData,
+{
+    fn get_type_body() -> tealr::TypeGenerator {
+        let mut gen = tealr::RecordGenerator::new::<Self>(false);
+        gen.is_user_data = true;
+        <Self as TealData>::add_fields(&mut gen);
+        <Self as TealData>::add_methods(&mut gen);
+        gen.into()
+    }
+}
+impl From<Vec2> for egui::Vec2 {
+    fn from(v: Vec2) -> Self {
+        v.0
+    }
+}
+impl<T> mlua::UserData for Wrapper<T>
+where
+    Wrapper<T>: TealData,
+{
+    fn add_methods<'lua, U: UserDataMethods<'lua, Self>>(methods: &mut U) {
+        let mut x = UserDataWrapper::from_user_data_methods(methods);
+        <Self as TealData>::add_methods(&mut x);
+    }
+    fn add_fields<'lua, F: ::tealr::mlu::mlua::UserDataFields<'lua, Self>>(fields: &mut F) {
+        let mut wrapper = UserDataWrapper::from_user_data_fields(fields);
+        <Self as TealData>::add_fields(&mut wrapper)
+    }
+}
+#[derive(Clone, Copy, Default, AsRef, AsMut, Deref, DerefMut)]
+pub struct Wrapper<T>(T);
+
+impl<T> Wrapper<T> {
+    pub fn into<U>(self) -> U
+    where
+        T: Into<U>,
+    {
+        self.0.into()
+    }
+}
+impl<T> From<T> for Wrapper<T> {
+    fn from(t: T) -> Self {
+        Self(t)
+    }
+}
+// impl From<Arc<egui::Style>> for Wrapper<egui::Style> {
+//     fn from(s: Arc<egui::Style>) -> Self {
+//         Self((*s).clone())
 //     }
 // }
 // impl<> From<Wrapper<T>> for T {
@@ -415,6 +470,7 @@ impl TealData for CursorIcon {}
 
 impl TealData for Color32 {
     fn add_methods<'lua, T: TealDataMethods<'lua, Self>>(methods: &mut T) {
+        type InnerType = egui::Color32;
         wrap_method!(f; default;; Color32);
     }
 
@@ -522,7 +578,8 @@ impl TealData for TextureHandle {
         methods.add_method("name", |_, th, ()| Ok(th.name()));
         methods.add_method("aspect_ratio", |_, th, ()| Ok(th.aspect_ratio()));
         methods.add_method("size", |_, th, ()| Ok(th.size()));
-        methods.add_method("id", |_, th, ()| Ok(TextureId(th.id())));
+        wrap_method!(m; id; ; TextureId);
+        // methods.add_method("id", |_, th, ()| Ok(TextureId(th.id().into())));
     }
 
     fn add_fields<'lua, F: TealDataFields<'lua, Self>>(_fields: &mut F) {}
@@ -645,6 +702,11 @@ impl From<egui::Style> for Style {
 }
 impl From<&Arc<egui::Style>> for Style {
     fn from(s: &Arc<egui::Style>) -> Self {
+        Self(s.clone())
+    }
+}
+impl From<Arc<egui::Style>> for Style {
+    fn from(s: Arc<egui::Style>) -> Self {
         Self(s.clone())
     }
 }

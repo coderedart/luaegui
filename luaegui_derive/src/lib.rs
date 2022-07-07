@@ -17,7 +17,7 @@ pub fn wrap_method(input: TokenStream) -> TokenStream {
     let method_type = format_ident!("{}", method_type);
     let fn_name = input.fn_name;
     let (self_ref, self_ref_usage) = match input.lua_impl_type {
-        input::LuaImplType::Function => (quote!(), quote!(Self::#fn_name)),
+        input::LuaImplType::Function => (quote!(), quote!(InnerType::#fn_name)),
         input::LuaImplType::MethodRef => (quote!(self_ref,), quote!(self_ref.#fn_name)),
         input::LuaImplType::MethodMut => (quote!(self_ref,), quote!(self_ref.#fn_name)),
         input::LuaImplType::MethodSelf => (quote!(self_ref,), quote!(self_ref.clone().#fn_name)),
@@ -72,7 +72,7 @@ pub fn wrap_method(input: TokenStream) -> TokenStream {
     } else {
         match input.rets.len() {
             0 => quote!(),
-            1 => quote!(let result = result.into();),
+            1 => quote!(let result = result.clone().into();),
             rest => {
                 let index = (0..rest).into_iter().map(Index::from);
 
