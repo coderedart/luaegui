@@ -24,12 +24,11 @@ impl eframe::App for MyApp {
             }
             ui.text_edit_multiline(&mut self.lua_code);
         });
-        let _: () = self
-            .lua_vm
+        self.lua_vm
             .globals()
             .get::<_, tealr::mlu::mlua::Function>("On_gui")
             .expect("failed to get on_gui function")
-            .call(luaegui::Context::from(ctx.clone()))
+            .call::<_, ()>(luaegui::Context::from(ctx.clone()))
             .expect("failed to call On_gui function");
     }
 }

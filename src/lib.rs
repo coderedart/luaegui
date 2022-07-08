@@ -11,14 +11,15 @@ pub use others::*;
 pub use response::*;
 use tealr::{
     mlu::{
-        mlua::{self, Lua},
-        TealData,
+        mlua::{self, Lua, UserDataMethods},
+        TealData, UserDataWrapper,
     },
-    MluaTealDerive, TypeWalker,
+    MluaTealDerive, TypeBody, TypeWalker,
 };
 pub use ui::*;
 pub use widget::*;
 
+use derive_more::*;
 #[derive(Clone, Default, MluaTealDerive)]
 pub struct EguiProxy;
 impl TealData for EguiProxy {}
@@ -30,7 +31,7 @@ pub fn register_egui_lua_bindings(lua: &Lua) -> Result<(), mlua::Error> {
     egui_proxy.set("galley", lua.create_proxy::<Galley>()?)?;
     egui_proxy.set("response", lua.create_proxy::<Response>()?)?;
     egui_proxy.set("rich_text", lua.create_proxy::<RichText>()?)?;
-    egui_proxy.set("ui_docs", lua.create_proxy::<Ui>()?)?;
+    egui_proxy.set("ui_docs", lua.create_proxy::<UiMutRef>()?)?;
     egui_proxy.set("widget_text", lua.create_proxy::<WidgetText>()?)?;
     egui_proxy.set("vec2", lua.create_proxy::<Vec2>()?)?;
 
@@ -53,11 +54,11 @@ macro_rules! lua_registry_scoped_ui {
 #[macro_export]
 macro_rules! lua_registry_scoped_ui_extract {
     ( $lua:expr, $from_ui:expr, |$ui:ident| $code:expr) => {{
-        use $crate::ui::Ui;
+        use $crate::ui::UiMutRef;
         let key = $lua
             .scope(|scope| {
                 let $ui = scope
-                    .create_nonstatic_userdata(Ui::from($from_ui))
+                    .create_nonstatic_userdata(UiMutRef::from($from_ui))
                     .expect("failed to create non static userdata with Ui");
                 let response: MultiValue = $code.expect("ui function returned error");
                 $lua.create_registry_value(response.into_vec())
@@ -75,7 +76,7 @@ macro_rules! lua_registry_scoped_ui_extract {
 
 pub fn get_all_types() -> TypeWalker {
     tealr::TypeWalker::new()
-        .process_type::<Ui>()
+        .process_type::<UiMutRef>()
         .process_type::<Context>()
         .process_type::<Response>()
         .process_type::<Spacing>()
@@ -112,70 +113,84 @@ macro_rules! wrapper_from_impl {
         }
     };
 }
-#[macro_export]
-macro_rules! from_impl {
-    ($name:ident $etype:path) => {
-        impl From<$name> for $etype {
-            fn from(x: $name) -> Self {
-                x.0
-            }
-        }
-        impl From<&$name> for $etype {
-            fn from(x: &$name) -> Self {
-                x.clone().0
-            }
-        }
-        impl From<$etype> for $name {
-            fn from(x: $etype) -> Self {
-                Self(x)
-            }
-        }
-        impl From<&$etype> for $name {
-            fn from(x: &$etype) -> Self {
-                Self(x.clone())
-            }
-        }
-    };
+// #[macro_export]
+// macro_rules! from_impl {
+//     ($name:ident $etype:path) => {
+//         impl From<$name> for $etype {
+//             fn from(x: $name) -> Self {
+//                 x.0
+//             }
+//         }
+//         impl From<&$name> for $etype {
+//             fn from(x: &$name) -> Self {
+//                 x.clone().0
+//             }
+//         }
+//         impl From<$etype> for $name {
+//             fn from(x: $etype) -> Self {
+//                 Self(x)
+//             }
+//         }
+//         impl From<&$etype> for $name {
+//             fn from(x: &$etype) -> Self {
+//                 Self(x.clone())
+//             }
+//         }
+//     };
+// }
+
+impl<T> TypeBody for Wrapper<T>
+where
+    Wrapper<T>: 'static + tealr::TypeName + tealr::mlu::TealData,
+{
+    fn get_type_body() -> tealr::TypeGenerator {
+        let mut gen = tealr::RecordGenerator::new::<Self>(false);
+        gen.is_user_data = true;
+        <Self as TealData>::add_fields(&mut gen);
+        <Self as TealData>::add_methods(&mut gen);
+        gen.into()
+    }
+}
+// impl From<Vec2> for egui::Vec2 {
+//     fn from(v: Vec2) -> Self {
+//         v.0
+//     }
+// }
+impl<T> mlua::UserData for Wrapper<T>
+where
+    Wrapper<T>: TealData,
+{
+    fn add_methods<'lua, U: UserDataMethods<'lua, Self>>(methods: &mut U) {
+        let mut x = UserDataWrapper::from_user_data_methods(methods);
+        <Self as TealData>::add_methods(&mut x);
+    }
+    fn add_fields<'lua, F: ::tealr::mlu::mlua::UserDataFields<'lua, Self>>(fields: &mut F) {
+        let mut wrapper = UserDataWrapper::from_user_data_fields(fields);
+        <Self as TealData>::add_fields(&mut wrapper)
+    }
+}
+#[derive(Clone, Copy, Default, AsRef, AsMut, Deref, DerefMut)]
+pub struct Wrapper<T>(T);
+
+impl<T> Wrapper<T> {
+    pub fn into<U>(self) -> U
+    where
+        T: Into<U>,
+    {
+        self.0.into()
+    }
+}
+impl<T> From<T> for Wrapper<T> {
+    fn from(t: T) -> Self {
+        Self(t)
+    }
 }
 
 #[macro_export]
 macro_rules! wrapper {
     ( $name:ident  $etype:path) => {
 
-        pub type $name = Wrapper<$etype>;
-
-        impl TypeName for $name {
-            fn get_type_parts() -> std::borrow::Cow<'static, [tealr::NamePart]> {
-                new_type!($name)
-            }
-        }
-
-        $crate::wrapper_from_impl!($name $etype);
-    };
-    ( copy $name:ident  $etype:path) => {
-        pub type $name = Wrapper<$etype>;
-
-        impl TypeName for $name {
-            fn get_type_parts() -> std::borrow::Cow<'static, [tealr::NamePart]> {
-                new_type!($name)
-            }
-        }
-
-        $crate::wrapper_from_impl!($name $etype);
-    };
-    ( default $name:ident  $etype:path) => {
-        pub type $name = Wrapper<$etype>;
-
-        impl TypeName for $name {
-            fn get_type_parts() -> std::borrow::Cow<'static, [tealr::NamePart]> {
-                new_type!($name)
-            }
-        }
-
-        $crate::wrapper_from_impl!($name $etype);
-    };
-    ( copy default $name:ident  $etype:path) => {
-        pub type $name = Wrapper<$etype>;
+        pub type $name = $crate::Wrapper<$etype>;
 
         impl TypeName for $name {
             fn get_type_parts() -> std::borrow::Cow<'static, [tealr::NamePart]> {

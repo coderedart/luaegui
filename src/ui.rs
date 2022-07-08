@@ -15,9 +15,9 @@ use tealr::{
 };
 
 #[derive(From, Deref, DerefMut, AsMut, AsRef)]
-pub struct Ui<'ui>(&'ui mut egui::Ui);
+pub struct UiMutRef<'ui>(&'ui mut egui::Ui);
 
-impl<'a> UserData for Ui<'a> {
+impl<'a> UserData for UiMutRef<'a> {
     fn add_methods<'lua, T: UserDataMethods<'lua, Self>>(methods: &mut T) {
         let mut x = UserDataWrapper::from_user_data_methods(methods);
         <Self as TealData>::add_methods(&mut x);
@@ -28,7 +28,7 @@ impl<'a> UserData for Ui<'a> {
     }
 }
 
-impl<'a> TypeName for Ui<'a> {
+impl<'a> TypeName for UiMutRef<'a> {
     fn get_type_parts() -> ::std::borrow::Cow<'static, [::tealr::NamePart]> {
         std::borrow::Cow::Borrowed(&[NamePart::Type(::tealr::TealType {
             name: std::borrow::Cow::Borrowed("Ui"),
@@ -38,7 +38,7 @@ impl<'a> TypeName for Ui<'a> {
     }
 }
 
-impl TypeBody for Ui<'static> {
+impl TypeBody for UiMutRef<'static> {
     fn get_type_body() -> tealr::TypeGenerator {
         let mut gen = tealr::RecordGenerator::new::<Self>(false);
         gen.is_user_data = true;
@@ -48,25 +48,56 @@ impl TypeBody for Ui<'static> {
     }
 }
 
-impl<'a> TealData for Ui<'a> {
+impl<'a> TealData for UiMutRef<'a> {
     fn add_methods<'lua, T: TealDataMethods<'lua, Self>>(methods: &mut T) {
+        type InnerType = egui::Ui;
         methods.document_type("This is the egui::Ui wrapper type");
-
-        // Ui Creation functions
-        // TODO: wrap Layout, Rect, ClipRect for creation functions
+        methods.document("WARNING:  rust versions of these following three functionsreturn `Ui`");
+        methods.document("but the lua versions instead take a function as an extra last argument which will be provide a `UiMutRef` as the other callbacks");
+        methods.document("we never actually return the `Ui` struct anywhere. instead we will return whatever the provided callback functions return as is.");
+        methods.add_function(
+            "new",
+            |lua, args: (Context, LayerId, Id, Rect, Rect, Function)| -> Result<MultiValue> {
+                let mut ui = InnerType::new(
+                    args.0.into(),
+                    args.1.into(),
+                    args.2.into(),
+                    args.3.into(),
+                    args.4.into(),
+                );
+                let ui = &mut ui;
+                let result = lua_registry_scoped_ui_extract!(lua, ui, |ui| { args.5.call(ui) });
+                Ok(result)
+            },
+        );
+        methods.add_method_mut(
+            "child_ui",
+            |lua, ui, args: (Rect, Layout, Function)| -> Result<MultiValue> {
+                let mut ui = ui.child_ui(args.0.into(), args.1.into());
+                let ui = &mut ui;
+                let result = lua_registry_scoped_ui_extract!(lua, ui, |ui| { args.2.call(ui) });
+                Ok(result)
+            },
+        );
+        methods.add_method_mut(
+            "child_ui_with_source",
+            |lua, ui, args: (Rect, Layout, IntoIdSource, Function)| -> Result<MultiValue> {
+                let mut ui = ui.child_ui_with_id_source(args.0.into(), args.1.into(), args.2);
+                let ui = &mut ui;
+                let result = lua_registry_scoped_ui_extract!(lua, ui, |ui| { args.3.call(ui) });
+                Ok(result)
+            },
+        );
         // getter / setters
         wrap_method!(m; id;; Id);
         wrap_method!(m; style;; Style);
-        methods.add_method_mut("set_style", |_, ui, a0: Style| {
-            ui.set_style(a0);
-            Ok(())
-        });
-        // TODO: style_mut
+        wrap_method!(mm; set_style; Style nointo);
+        // skip style_mut
         wrap_method!(mm; reset_style);
         wrap_method!(m; spacing;; Spacing);
         wrap_method!(m; visuals;; Visuals);
-        // TODO: spacing mut
-        // TODO: visuals mut
+        // skip spacing mut
+        // skip visuals mut
         wrap_method!(m; ctx;; Context);
         wrap_method!(m; painter;; Painter);
 
@@ -81,9 +112,7 @@ impl<'a> TealData for Ui<'a> {
         wrap_method!(m; layer_id;; LayerId);
 
         // TODO all RWLock Guards functions
-        methods.add_method("text_style_height", |_, ui, style: TextStyle| {
-            Ok(ui.text_style_height(style.as_ref()))
-        });
+        wrap_method!(m; text_style_height; TextStyle asref; f32);
         wrap_method!(m; clip_rect;; Rect);
         wrap_method!(mm; set_clip_rect; Rect);
         wrap_method!(mm; is_rect_visible; Rect; bool);
@@ -149,7 +178,7 @@ impl<'a> TealData for Ui<'a> {
         // TODO: allocate ui with layout
         // TODO: allocate ui at rect
         wrap_method!(mm; allocate_painter; Vec2 , Sense; Response , Painter; {let result = (result.0.into(), result.1.into());});
-        // TODO: wrap_method!(m; scroll_to_rect, Rect ; Option<Align>);
+        // TODO: wrap_method!(m; scroll_to_rect; Rect , Option<Align>);
         // TODO: scroll_to_cursor
         wrap_method!(m; scroll_with_delta; Vec2);
 
@@ -502,7 +531,7 @@ impl<'a> TealData for Ui<'a> {
                             lua.create_table_with_capacity(columns.len() as i32, 0)?;
                         for (index, ui) in columns.iter_mut().enumerate() {
                             let ui = scope
-                                .create_nonstatic_userdata(Ui::from(ui))
+                                .create_nonstatic_userdata(UiMutRef::from(ui))
                                 .expect("failed to create non static userdata with Ui");
                             columns_table.set(index + 1, ui)?; // lua indexing starts from 1
                         }
@@ -544,14 +573,14 @@ impl<'a> TealData for Ui<'a> {
     }
 }
 
-fn ui_add_fn(lua: &Lua, ui: &mut Ui, table: Table) -> Result<Response> {
+fn ui_add_fn(lua: &Lua, ui: &mut UiMutRef, table: Table) -> Result<Response> {
     use tealr::mlu::mlua::String;
     let widget_name: String = table.get("widget_type")?;
     match widget_name.to_str()? {
         "custom" => {
             let ui_function: Function = table.get("ui")?;
             lua.scope(|scope| {
-                let ui = Ui(ui);
+                let ui = UiMutRef(ui);
                 let ui = scope.create_nonstatic_userdata(ui)?;
                 let response: Response = ui_function.call((ui, table))?;
                 Ok(response)
@@ -571,7 +600,7 @@ struct UiTable<'lua> {
 }
 impl<'lua> egui::Widget for UiTable<'lua> {
     fn ui(self, ui: &mut egui::Ui) -> egui::Response {
-        ui_add_fn(self.lua, &mut Ui(ui), self.table)
+        ui_add_fn(self.lua, &mut UiMutRef(ui), self.table)
             .expect("widget failed to render inside Widget trait")
             .0
     }

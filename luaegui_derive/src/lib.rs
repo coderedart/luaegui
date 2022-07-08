@@ -7,6 +7,7 @@ use input::InputTokens;
 pub fn wrap_method(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as InputTokens);
 
+    // the type of method to add
     let method_type = match input.lua_impl_type {
         input::LuaImplType::Function => "add_function",
         input::LuaImplType::MethodRef => "add_method",
@@ -15,7 +16,11 @@ pub fn wrap_method(input: TokenStream) -> TokenStream {
     };
 
     let method_type = format_ident!("{}", method_type);
+    // the name of the inner function to call
     let fn_name = input.fn_name;
+    // if its a function, we need to call it using the namespace of the inner type. so, we need to do a `type InnerType = egui::Type` inside the tealdata impl so that this macro would work
+    // if its a &self or &mut self, we can simply call it directly
+    // if its a self taking method, then we need to clone it first.
     let (self_ref, self_ref_usage) = match input.lua_impl_type {
         input::LuaImplType::Function => (quote!(), quote!(InnerType::#fn_name)),
         input::LuaImplType::MethodRef => (quote!(self_ref,), quote!(self_ref.#fn_name)),
@@ -23,15 +28,16 @@ pub fn wrap_method(input: TokenStream) -> TokenStream {
         input::LuaImplType::MethodSelf => (quote!(self_ref,), quote!(self_ref.clone().#fn_name)),
     };
 
+    // gather argument types to use inside the tuple for the wrapping closure
     let arg_types = input.args.iter().map(|a| &a.outer_type);
     let arg_names = 0..input.args.len();
+    // create arg names like a0, a1 etc.. based on how many arguments there are.
     let arg_names = Vec::from_iter(
         arg_names
             .into_iter()
             .map(|index| format_ident!("a{}", index)),
     );
-    // let inner_arg_names = arg_names.iter();
-    // let mut arbitrary_expressions: ArrayVec<[String; 16]> = ArrayVec::new();
+    // here we will create the quotes to be placed inside the closure before calling the inner fn. this will help convert the arguments to their appropriate types
     let inner_converter_expressions =
         input
             .args
@@ -54,6 +60,7 @@ pub fn wrap_method(input: TokenStream) -> TokenStream {
                     quote!(#e)
                 }
             });
+    // return types
     let ret_types: Vec<_> = input.rets.iter().map(|a| &a.outer_type).collect();
 
     let return_type = match input.rets.len() {
@@ -66,6 +73,9 @@ pub fn wrap_method(input: TokenStream) -> TokenStream {
             quote!((#(#ret_types),*))
         }
     };
+
+    // quotes that will be placed after calling the inner fn, but before returning the result. to convert the results to appropriate types
+    // if there's already a last block provided, we will let it handle all conversions.
     let last = if let Some(last) = input.last {
         let last = last.stmts;
         quote!(#(#last)*)

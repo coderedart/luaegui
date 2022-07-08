@@ -8,7 +8,7 @@ use tealr::{
     *,
 };
 
-use crate::{Align, CursorIcon, IntoWidgetText, PointerButton, Pos2, Sense, Ui, Vec2};
+use crate::{Align, CursorIcon, IntoWidgetText, PointerButton, Pos2, Sense, UiMutRef, Vec2};
 
 #[derive(Clone, MluaTealDerive, AsRef, AsMut, From, Deref, DerefMut)]
 pub struct Response(pub egui::Response);
@@ -55,7 +55,7 @@ impl tealr::mlu::TealData for Response {
         methods.add_method("on_hover_ui", |lua, resp, a0: Function| {
             Ok(Response::from(resp.clone().0.on_hover_ui(|ui| {
                 lua.scope(|scope| {
-                    let ui = scope.create_nonstatic_userdata(Ui::from(ui))?;
+                    let ui = scope.create_nonstatic_userdata(UiMutRef::from(ui))?;
                     a0.call(ui)?;
                     Ok(())
                 })
@@ -65,7 +65,7 @@ impl tealr::mlu::TealData for Response {
         methods.add_method("on_disabled_hover_ui", |lua, resp, a0: Function| {
             Ok(Response::from(resp.clone().0.on_disabled_hover_ui(|ui| {
                 lua.scope(|scope| {
-                    let ui = scope.create_nonstatic_userdata(Ui::from(ui))?;
+                    let ui = scope.create_nonstatic_userdata(UiMutRef::from(ui))?;
                     a0.call(ui)?;
                     Ok(())
                 })
@@ -76,7 +76,7 @@ impl tealr::mlu::TealData for Response {
             Ok(Response::from(resp.clone().0.on_hover_ui_at_pointer(
                 |ui| {
                     lua.scope(|scope| {
-                        let ui = scope.create_nonstatic_userdata(Ui::from(ui))?;
+                        let ui = scope.create_nonstatic_userdata(UiMutRef::from(ui))?;
                         a0.call(ui)?;
                         Ok(())
                     })
@@ -106,7 +106,7 @@ impl tealr::mlu::TealData for Response {
         methods.add_method("context_menu", |lua, resp, a0: Function| {
             Ok(Response::from(resp.clone().0.context_menu(|ui| {
                 lua.scope(|scope| {
-                    let ui = scope.create_nonstatic_userdata(Ui::from(ui))?;
+                    let ui = scope.create_nonstatic_userdata(UiMutRef::from(ui))?;
                     a0.call(ui)?;
                     Ok(())
                 })

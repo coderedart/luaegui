@@ -4,7 +4,7 @@ use tealr::mlu::{
     TealDataMethods,
 };
 
-use crate::{Context, Ui};
+use crate::{Context, UiMutRef};
 
 pub fn add_container_methods<'lua, T: TealDataMethods<'lua, Context>>(methods: &mut T) {
     methods.document(NEW_WINDOW_DOCS);
@@ -49,7 +49,7 @@ pub fn new_window(lua: &Lua, context: &Context, args: (Table, Function)) -> Resu
     window.show(context.as_ref(), |ui| {
         result = lua.scope(|scope| {
             let temp_ui = scope
-                .create_nonstatic_userdata(Ui::from(ui))
+                .create_nonstatic_userdata(UiMutRef::from(ui))
                 .expect("failed to create temporary ui");
             ui_function.call(temp_ui)
         });

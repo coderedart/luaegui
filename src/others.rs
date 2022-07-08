@@ -4,10 +4,10 @@ use derive_more::*;
 use luaegui_derive::wrap_method;
 use tealr::{
     mlu::{
-        mlua::{Lua, Result, UserDataMethods},
+        mlua::{Lua, Result},
         *,
     },
-    new_type, TypeBody, TypeName,
+    new_type, TypeName,
 };
 
 use crate::{add_fields, wrapper};
@@ -56,7 +56,7 @@ impl TealData for Shape {
     fn add_fields<'lua, F: TealDataFields<'lua, Self>>(_fields: &mut F) {}
 }
 
-wrapper!(copy CircleShape egui::epaint::CircleShape);
+wrapper!( CircleShape egui::epaint::CircleShape);
 impl TealData for CircleShape {
     fn add_methods<'lua, T: TealDataMethods<'lua, Self>>(methods: &mut T) {
         // filled and stroke
@@ -89,7 +89,7 @@ impl TealData for PathShape {
     }
 }
 
-wrapper!(copy RectShape egui::epaint::RectShape);
+wrapper!( RectShape egui::epaint::RectShape);
 impl TealData for RectShape {
     fn add_methods<'lua, T: TealDataMethods<'lua, Self>>(_methods: &mut T) {}
 
@@ -134,7 +134,7 @@ impl TealData for TextShape {
     }
 }
 
-wrapper!(copy default Margin egui::style::Margin);
+wrapper!( Margin egui::style::Margin);
 impl TealData for Margin {
     fn add_methods<'lua, T: TealDataMethods<'lua, Self>>(methods: &mut T) {
         type InnerType = egui::style::Margin;
@@ -157,7 +157,7 @@ impl TealData for Margin {
         add_fields!(fields, left: f32, right: f32, top: f32, bottom: f32);
     }
 }
-wrapper!(copy default Stroke egui::Stroke);
+wrapper!( Stroke egui::Stroke);
 impl TealData for Stroke {
     fn add_methods<'lua, T: TealDataMethods<'lua, Self>>(methods: &mut T) {
         methods
@@ -174,7 +174,7 @@ impl TealData for Stroke {
         add_fields!(fields, width: f32, color: Color32);
     }
 }
-wrapper!(copy default Rounding egui::Rounding);
+wrapper!( Rounding egui::Rounding);
 impl TealData for Rounding {
     fn add_methods<'lua, T: TealDataMethods<'lua, Self>>(methods: &mut T) {
         methods
@@ -221,14 +221,14 @@ impl TealData for Spacing {
         );
     }
 }
-wrapper!(copy default Shadow egui::epaint::Shadow);
+wrapper!( Shadow egui::epaint::Shadow);
 impl TealData for Shadow {
     fn add_fields<'lua, F: TealDataFields<'lua, Self>>(fields: &mut F) {
         add_fields!(fields, extrusion: f32, color: Color32);
     }
 }
 
-wrapper!(copy WidgetVisuals egui::style::WidgetVisuals);
+wrapper!( WidgetVisuals egui::style::WidgetVisuals);
 impl TealData for WidgetVisuals {
     fn add_methods<'lua, T: TealDataMethods<'lua, Self>>(methods: &mut T) {
         wrap_method!(m; text_color;; Color32);
@@ -260,7 +260,7 @@ impl TealData for Widgets {
         );
     }
 }
-wrapper!(copy Selection egui::style::Selection);
+wrapper!( Selection egui::style::Selection);
 impl TealData for Selection {
     fn add_methods<'lua, T: TealDataMethods<'lua, Self>>(_methods: &mut T) {}
 
@@ -337,15 +337,15 @@ impl TealData for Painter {}
 wrapper!(Layout egui::Layout);
 impl TealData for Layout {}
 
-wrapper!(copy Rect egui::Rect);
+wrapper!( Rect egui::Rect);
 impl TealData for Rect {}
 
-wrapper!(copy LayerId egui::LayerId);
+wrapper!( LayerId egui::LayerId);
 impl TealData for LayerId {}
 
-wrapper!(copy default Color32 egui::Color32);
+wrapper!( Color32 egui::Color32);
 
-wrapper!(copy Id egui::Id);
+wrapper!( Id egui::Id);
 impl TealData for Id {}
 
 wrapper!(RichText egui::RichText);
@@ -361,76 +361,19 @@ impl TealData for WidgetText {
     fn add_fields<'lua, F: TealDataFields<'lua, Self>>(_fields: &mut F) {}
 }
 
-wrapper!(copy default TextureId egui::TextureId);
+wrapper!( TextureId egui::TextureId);
 impl TealData for TextureId {}
 
-// wrapper!(copy default Vec2 egui::Vec2);
-pub type Vec2 = Wrapper<egui::Vec2>;
+wrapper!( Vec2 egui::Vec2);
+// pub type Vec2 = Wrapper<egui::Vec2>;
 
-impl TypeName for Vec2 {
-    fn get_type_parts() -> std::borrow::Cow<'static, [tealr::NamePart]> {
-        new_type!(Vec2)
-    }
-}
-
-impl<T> TypeBody for Wrapper<T>
-where
-    Wrapper<T>: 'static + tealr::TypeName + tealr::mlu::TealData,
-{
-    fn get_type_body() -> tealr::TypeGenerator {
-        let mut gen = tealr::RecordGenerator::new::<Self>(false);
-        gen.is_user_data = true;
-        <Self as TealData>::add_fields(&mut gen);
-        <Self as TealData>::add_methods(&mut gen);
-        gen.into()
-    }
-}
-impl From<Vec2> for egui::Vec2 {
-    fn from(v: Vec2) -> Self {
-        v.0
-    }
-}
-impl<T> mlua::UserData for Wrapper<T>
-where
-    Wrapper<T>: TealData,
-{
-    fn add_methods<'lua, U: UserDataMethods<'lua, Self>>(methods: &mut U) {
-        let mut x = UserDataWrapper::from_user_data_methods(methods);
-        <Self as TealData>::add_methods(&mut x);
-    }
-    fn add_fields<'lua, F: ::tealr::mlu::mlua::UserDataFields<'lua, Self>>(fields: &mut F) {
-        let mut wrapper = UserDataWrapper::from_user_data_fields(fields);
-        <Self as TealData>::add_fields(&mut wrapper)
-    }
-}
-#[derive(Clone, Copy, Default, AsRef, AsMut, Deref, DerefMut)]
-pub struct Wrapper<T>(T);
-
-impl<T> Wrapper<T> {
-    pub fn into<U>(self) -> U
-    where
-        T: Into<U>,
-    {
-        self.0.into()
-    }
-}
-impl<T> From<T> for Wrapper<T> {
-    fn from(t: T) -> Self {
-        Self(t)
-    }
-}
-// impl From<Arc<egui::Style>> for Wrapper<egui::Style> {
-//     fn from(s: Arc<egui::Style>) -> Self {
-//         Self((*s).clone())
-//     }
-// }
-// impl<> From<Wrapper<T>> for T {
-//     fn from(wt: Wrapper<T>) -> Self {
-//         wt.0
+// impl TypeName for Vec2 {
+//     fn get_type_parts() -> std::borrow::Cow<'static, [tealr::NamePart]> {
+//         new_type!(Vec2)
 //     }
 // }
 
-wrapper!(copy default Pos2 egui::Pos2);
+wrapper!( Pos2 egui::Pos2);
 impl TealData for Pos2 {
     fn add_methods<'lua, T: TealDataMethods<'lua, Self>>(methods: &mut T) {
         wrap_method!(m; to_vec2;; Vec2);
@@ -448,7 +391,7 @@ impl TealData for Pos2 {
 
     fn add_fields<'lua, F: TealDataFields<'lua, Self>>(_fields: &mut F) {}
 }
-wrapper!(copy Sense egui::Sense);
+wrapper!( Sense egui::Sense);
 impl TealData for Sense {
     fn add_methods<'lua, T: TealDataMethods<'lua, Self>>(methods: &mut T) {
         wrap_method!(m; interactive;; bool);
@@ -459,13 +402,13 @@ impl TealData for Sense {
     }
 }
 
-wrapper!(copy default Align egui::Align);
+wrapper!( Align egui::Align);
 impl TealData for Align {}
 
-wrapper!(copy PointerButton egui::PointerButton);
+wrapper!( PointerButton egui::PointerButton);
 impl TealData for PointerButton {}
 
-wrapper!(copy default CursorIcon egui::CursorIcon);
+wrapper!( CursorIcon egui::CursorIcon);
 impl TealData for CursorIcon {}
 
 impl TealData for Color32 {
@@ -686,33 +629,22 @@ impl From<&Vec2> for (f32, f32) {
     }
 }
 
-#[derive(Clone, AsRef, AsMut, Deref, DerefMut, tealr::MluaTealDerive)]
-pub struct Style(pub Arc<egui::Style>);
+wrapper!(Style egui::Style);
 impl TealData for Style {}
 
-impl From<Style> for egui::Style {
-    fn from(s: Style) -> Self {
-        (*s.0).clone()
-    }
-}
-impl From<egui::Style> for Style {
-    fn from(s: egui::Style) -> Self {
-        Self(Arc::new(s))
-    }
-}
 impl From<&Arc<egui::Style>> for Style {
     fn from(s: &Arc<egui::Style>) -> Self {
-        Self(s.clone())
+        Self(egui::Style::clone(s))
     }
 }
 impl From<Arc<egui::Style>> for Style {
     fn from(s: Arc<egui::Style>) -> Self {
-        Self(s.clone())
+        Self(egui::Style::clone(s.as_ref()))
     }
 }
 impl From<Style> for Arc<egui::Style> {
     fn from(s: Style) -> Self {
-        s.0
+        Arc::new(s.0)
     }
 }
 

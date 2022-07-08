@@ -93,8 +93,8 @@ impl Parse for InputTokens {
                 input.parse::<Token!(,)>()?;
             } else if !input.peek(Token!(;)) && !input.is_empty() {
                 // if the input is not comma, not semicolon and not empty, then user made a syntax error.
-                let mut e = input
-                .error("comma or semicolon required after the Argument type / converter before starting the next argument or return types list respectively");
+                let error_message = format!("comma or semicolon required after the Argument type / converter before starting the next argument or return types list respectively. remaining tokens: {} ", input.to_string());
+                let mut e = input.error(error_message);
 
                 e.combine(input.error(format!("remaining tokens: {}", &input)));
                 return Err(e);
@@ -132,9 +132,9 @@ impl Parse for InputTokens {
             if input.peek(Token!(,)) {
                 input.parse::<Token!(,)>()?;
             } else if !input.peek(Token!(;)) && !input.is_empty() {
+                let error_message = format!("comma or semicolon required after the Return type / converter before starting the next Return type list respectively. rest of the tokens are : {}", input.to_string());
                 // if the input is not comma, not semicolon and not empty, then user made a syntax error.
-                let mut e = input
-                .error("comma or semicolon required after the Return type / converter before starting the next Return type list respectively");
+                let mut e = input.error(error_message);
 
                 e.combine(input.error(format!("remaining tokens: {}", &input)));
                 return Err(e);
@@ -231,7 +231,7 @@ impl Parse for Converter {
             Ok(Self::Clone)
         } else if converter == "nointo" {
             Ok(Self::NoInto)
-        } else if converter == "ref" {
+        } else if converter == "asref" {
             Ok(Self::Ref)
         } else {
             Err(input.error("Invalid Converter for Argument. valid converters => [ clone | nointo | ref | { some code in braces } ]"))
