@@ -4,51 +4,66 @@ use derive_more::*;
 use luaegui_derive::wrap_method;
 use tealr::{
     mlu::{
-        mlua::{Lua, Result},
+        mlua::{Function, Lua, Result},
         *,
     },
-    new_type, TypeName,
+    new_type,
 };
 
 use crate::{add_fields, wrapper};
 wrapper!(Shape egui::epaint::Shape);
 impl TealData for Shape {
     fn add_methods<'lua, T: TealDataMethods<'lua, Self>>(methods: &mut T) {
-        methods.add_function("line_segment", |_, (a0, a1): ([Pos2; 2], Stroke)| {
-            Ok(Shape::from(egui::epaint::Shape::line_segment(
-                [a0[0].into(), a0[1].into()],
-                a1,
-            )))
-        });
-        methods.add_function("line_segment", |_, (a0, a1): ([Pos2; 2], Stroke)| {
-            Ok(Shape::from(egui::epaint::Shape::line_segment(
-                [a0[0].into(), a0[1].into()],
-                a1,
-            )))
-        });
-        {
-            fn line_segment(_: &mlua::Lua, (a0, a1): ([Pos2; 2], Stroke)) -> Result<Shape> {
-                Ok(Shape::from(egui::epaint::Shape::line_segment(
-                    [a0[0].into(), a0[1].into()],
-                    a1,
-                )))
-            }
-            methods.add_function("line_segment", line_segment);
-        }
+        type InnerType = egui::epaint::Shape;
 
         methods.add_function("line_segment", |_, (a0, a1): ([Pos2; 2], Stroke)| {
-            Ok(Shape::from(egui::epaint::Shape::line_segment(
+            Ok(Shape::from(InnerType::line_segment(
                 [a0[0].into(), a0[1].into()],
                 a1,
             )))
         });
-        methods.add_function("line_segment", |_, (a0, a1): ([Pos2; 2], Stroke)| {
-            Ok(Shape::from(egui::epaint::Shape::line_segment(
-                [a0[0].into(), a0[1].into()],
-                a1,
-            )))
+        methods.add_function("line", |_, (a0, a1): (Vec<Pos2>, Stroke)| {
+            let a0 = a0.into_iter().map(|p| p.0).collect();
+            Ok(Shape::from(InnerType::line(a0, a1)))
         });
 
+        methods.add_function("closed_line", |_, (a0, a1): (Vec<Pos2>, Stroke)| {
+            let a0 = a0.into_iter().map(|p| p.0).collect();
+            Ok(Shape::from(InnerType::closed_line(a0, a1)))
+        });
+        methods.add_function("dotted_line", |_, (a0, a1): (Vec<Pos2>, Stroke)| {
+            let a0 = a0.into_iter().map(|p| p.0).collect();
+            Ok(Shape::from(InnerType::line(a0, a1)))
+        });
+        methods.add_function(
+            "dashed_line",
+            |_, (a0, a1, a2, a3): (Vec<Pos2>, Stroke, f32, f32)| {
+                let a0: Vec<_> = a0.into_iter().map(|p| p.0).collect();
+                let result: Vec<_> = InnerType::dashed_line(&a0, a1, a2, a3)
+                    .into_iter()
+                    .map(Shape::from)
+                    .collect();
+                Ok(result)
+            },
+        );
+        // TODO: dashed_line_many
+        methods.add_function(
+            "convex_polygon",
+            |_, (a0, a1, a2): (Vec<Pos2>, Color32, Stroke)| {
+                let a0 = a0.into_iter().map(|p| p.0).collect();
+                Ok(Shape::from(InnerType::convex_polygon(a0, a1, a2)))
+            },
+        );
+        wrap_method!(f; circle_filled; Pos2, f32, Color32 nointo; Shape);
+        wrap_method!(f; circle_stroke; Pos2, f32, Stroke nointo; Shape);
+        wrap_method!(f; rect_filled; Rect, Rounding nointo, Color32 nointo; Shape);
+        wrap_method!(f; rect_stroke; Rect, Rounding nointo, Stroke nointo; Shape);
+        // TODO: text can't be done because `Fonts` is not Clone yet
+        wrap_method!(f; galley; Pos2, Galley; Shape);
+        wrap_method!(f; galley_with_color; Pos2, Galley, Color32; Shape);
+        wrap_method!(f; mesh; Mesh; Shape);
+        wrap_method!(f; image; TextureId, Rect, Rect, Color32; Shape);
+        wrap_method!(m; visual_bounding_rect;;Rect);
         wrap_method!(m; texture_id;; TextureId);
         wrap_method!(mm; translate; Vec2);
     }
@@ -56,10 +71,19 @@ impl TealData for Shape {
     fn add_fields<'lua, F: TealDataFields<'lua, Self>>(_fields: &mut F) {}
 }
 
+wrapper!(Mesh egui::Mesh);
+impl TealData for Mesh {}
+// wrapper!(Fonts egui::epaint::Fonts);
+// impl TealData for Fonts {
+
+// }
 wrapper!( CircleShape egui::epaint::CircleShape);
 impl TealData for CircleShape {
     fn add_methods<'lua, T: TealDataMethods<'lua, Self>>(methods: &mut T) {
-        // filled and stroke
+        type InnerType = egui::epaint::CircleShape;
+
+        wrap_method!(f; filled; Pos2, f32, Color32 nointo; CircleShape);
+        wrap_method!(f; stroke; Pos2, f32, Stroke nointo; CircleShape);
         wrap_method!(m; visual_bounding_rect;; Rect);
     }
 
@@ -73,7 +97,50 @@ impl TealData for CircleShape {
         );
     }
 }
+wrapper!(ClippedPrimitive egui::epaint::ClippedPrimitive);
+impl TealData for ClippedPrimitive {
+    fn add_fields<'lua, F: TealDataFields<'lua, Self>>(fields: &mut F) {
+        add_fields!(fields, clip_rect: Rect, primitive: Primitive);
+    }
 
+    fn add_methods<'lua, T: TealDataMethods<'lua, Self>>(methods: &mut T) {
+        methods.add_function("new", |_, args: (Rect, Primitive)| {
+            Ok(Self(egui::epaint::ClippedPrimitive {
+                clip_rect: args.0.into(),
+                primitive: args.1.into(),
+            }))
+        })
+    }
+}
+wrapper!(ClippedShape egui::epaint::ClippedShape);
+impl TealData for ClippedShape {
+    fn add_methods<'lua, T: TealDataMethods<'lua, Self>>(methods: &mut T) {
+        methods.add_function("new", |_, args: (Rect, Shape)| {
+            Ok(Self(egui::epaint::ClippedShape(
+                args.0.into(),
+                args.1.into(),
+            )))
+        })
+    }
+
+    fn add_fields<'lua, F: TealDataFields<'lua, Self>>(fields: &mut F) {
+        fields.add_field_method_get("rect", |_, self_ref| Ok(Rect::from(self_ref.0 .0)));
+        fields.add_field_method_set("rect", |_, self_ref, a0: Rect| {
+            self_ref.0 .0 = a0.into();
+            Ok(())
+        });
+
+        fields.add_field_method_set("rect", |_, self_ref, a0: Shape| {
+            self_ref.0 .1 = a0.into();
+            Ok(())
+        });
+        fields.add_field_method_get("shape", |_, self_ref| {
+            Ok(Shape::from(self_ref.0 .1.clone()))
+        });
+    }
+}
+wrapper!(Primitive egui::epaint::Primitive);
+impl TealData for Primitive {}
 wrapper!(PathShape egui::epaint::PathShape);
 impl TealData for PathShape {
     fn add_methods<'lua, T: TealDataMethods<'lua, Self>>(methods: &mut T) {
@@ -89,6 +156,122 @@ impl TealData for PathShape {
     }
 }
 
+wrapper!(RectTransform egui::emath::RectTransform);
+impl TealData for RectTransform {
+    fn add_methods<'lua, T: TealDataMethods<'lua, Self>>(methods: &mut T) {
+        type InnerType = egui::emath::RectTransform;
+
+        wrap_method!(f; identity; Rect; RectTransform);
+        wrap_method!(f; from_to;Rect, Rect; RectTransform);
+        wrap_method!(m; from; ; Rect);
+        wrap_method!(m; to; ; Rect);
+        wrap_method!(m; scale; ; Vec2);
+        wrap_method!(m; inverse; ; RectTransform);
+        wrap_method!(m; transform_pos; Pos2 ; Pos2);
+        wrap_method!(m; transform_rect; Rect; Rect);
+        wrap_method!(m; transform_pos_clamped; Pos2 ; Pos2);
+    }
+
+    fn add_fields<'lua, F: TealDataFields<'lua, Self>>(_fields: &mut F) {}
+}
+
+wrapper!(CubicBezierShape egui::epaint::CubicBezierShape);
+impl TealData for CubicBezierShape {
+    fn add_methods<'lua, T: TealDataMethods<'lua, Self>>(methods: &mut T) {
+        type InnerType = egui::epaint::CubicBezierShape;
+        methods.add_function(
+            "from_points_stroke",
+            |_, args: ([Pos2; 4], bool, Color32, Stroke)| {
+                let a0 = args.0;
+                let a0 = [a0[0].into(), a0[1].into(), a0[2].into(), a0[3].into()];
+                let cbs = InnerType::from_points_stroke(a0, args.1, args.2.into(), args.3);
+                Ok(CubicBezierShape::from(cbs))
+            },
+        );
+        wrap_method!(m; transform; RectTransform asref; CubicBezierShape);
+        methods.add_method(
+            "to_path_shapes",
+            |_, self_ref, (a0, a1): (Option<f32>, Option<f32>)| {
+                let result: Vec<PathShape> = self_ref
+                    .to_path_shapes(a0, a1)
+                    .into_iter()
+                    .map(Into::into)
+                    .collect();
+                Ok(result)
+            },
+        );
+        wrap_method!(m; visual_bounding_rect; ; Rect);
+        wrap_method!(m; logical_bounding_rect; ; Rect);
+        methods.add_method("split_range", |_, self_ref, args: (f32, f32)| {
+            Ok(CubicBezierShape::from(self_ref.split_range(args.0..args.1)))
+        });
+        wrap_method!(m; num_quadratics; f32; u32);
+        methods.add_method("find_cross_t", |_, self_ref, args: f32| {
+            Ok(self_ref.find_cross_t(args))
+        });
+        wrap_method!(m; sample; f32; Pos2);
+        methods.add_method("flatten", |_, self_ref, args: Option<f32>| {
+            let result: Vec<Pos2> = self_ref.flatten(args).into_iter().map(Into::into).collect();
+            Ok(result)
+        });
+        methods.add_method(
+            "flatten_closed",
+            |_, self_ref, args: (Option<f32>, Option<f32>)| {
+                let result: Vec<Vec<Pos2>> = self_ref
+                    .flatten_closed(args.0, args.1)
+                    .into_iter()
+                    .map(|v| v.into_iter().map(Into::into).collect())
+                    .collect();
+                Ok(result)
+            },
+        );
+        methods.add_method(
+            "for_each_flattened_with_t",
+            |_, self_ref, args: (f32, Function)| {
+                self_ref.for_each_flattened_with_t(args.0, &mut |a0, a1| {
+                    args.1
+                        .call::<_, ()>((Pos2::from(a0), a1))
+                        .expect("callback to for_each_flattened_with_t returned error");
+                });
+                Ok(())
+            },
+        );
+    }
+
+    fn add_fields<'lua, F: TealDataFields<'lua, Self>>(fields: &mut F) {
+        add_fields!(fields, closed: bool, fill: Color32, stroke: Stroke);
+        fields.add_field_method_set("points", |_, self_ref, a0: [Pos2; 4]| {
+            self_ref.points = [a0[0].into(), a0[1].into(), a0[2].into(), a0[3].into()];
+            Ok(())
+        });
+        fields.add_field_method_get("points", |_, self_ref| {
+            let a0 = self_ref.points;
+            Ok([Pos2::from(a0[0]), a0[1].into(), a0[2].into(), a0[3].into()])
+        });
+    }
+}
+wrapper!(FontId egui::FontId);
+impl TealData for FontId {
+    fn add_methods<'lua, T: TealDataMethods<'lua, Self>>(methods: &mut T) {
+        type InnerType = egui::FontId;
+        wrap_method!(f; new; f32, FontFamily; FontId);
+        wrap_method!(f; proportional; f32; FontId);
+        wrap_method!(f; monospace; f32; FontId);
+    }
+
+    fn add_fields<'lua, F: TealDataFields<'lua, Self>>(fields: &mut F) {
+        add_fields!(fields, size: f32, family: FontFamily);
+    }
+}
+wrapper!(FontFamily egui::FontFamily);
+impl TealData for FontFamily {
+    fn add_methods<'lua, T: TealDataMethods<'lua, Self>>(methods: &mut T) {
+        type InnerType = egui::FontFamily;
+        wrap_method!(f; default; ; FontFamily);
+    }
+
+    fn add_fields<'lua, F: TealDataFields<'lua, Self>>(_fields: &mut F) {}
+}
 wrapper!( RectShape egui::epaint::RectShape);
 impl TealData for RectShape {
     fn add_methods<'lua, T: TealDataMethods<'lua, Self>>(_methods: &mut T) {}
@@ -118,7 +301,7 @@ impl TealData for TextShape {
 
     fn add_fields<'lua, F: TealDataFields<'lua, Self>>(fields: &mut F) {
         add_fields!(fields, pos: Pos2, underline: Stroke, angle: f32);
-        fields.add_field_method_get("galley", |_, s| Ok(Galley::from(s.galley.clone())));
+        fields.add_field_method_get("galley", |_, s| Ok(Galley(s.galley.clone())));
         fields.add_field_method_set("galley", |_, s, a0: Galley| {
             s.galley = a0.0;
             Ok(())
@@ -337,6 +520,8 @@ impl TealData for Painter {}
 wrapper!(Layout egui::Layout);
 impl TealData for Layout {}
 
+wrapper!(Align2 egui::Align2);
+impl TealData for Align2 {}
 wrapper!( Rect egui::Rect);
 impl TealData for Rect {}
 
@@ -478,18 +663,15 @@ impl From<Galley> for egui::WidgetText {
         g.0.into()
     }
 }
+impl From<Galley> for Arc<egui::Galley> {
+    fn from(a: Galley) -> Self {
+        a.0
+    }
+}
 
 #[derive(Clone, AsRef, AsMut, Deref, tealr::MluaTealDerive)]
 pub struct Galley(Arc<egui::Galley>);
 impl TealData for Galley {}
-impl<T> From<T> for Galley
-where
-    T: Into<Arc<egui::Galley>>,
-{
-    fn from(t: T) -> Self {
-        Self(t.into())
-    }
-}
 
 tealr::create_union_mlua!(pub enum IntoRichText = String | RichText );
 impl From<IntoRichText> for RichText {

@@ -32,11 +32,11 @@ impl eframe::App for MyApp {
             .expect("failed to call On_gui function");
     }
 }
-pub const LUA_GUI_CODE: &str = include_str!("sample.lua");
 pub fn main() {
     let lua_vm = tealr::mlu::mlua::Lua::new();
     let app = Box::new(MyApp {
-        lua_code: LUA_GUI_CODE.to_string(),
+        lua_code: std::fs::read_to_string("./examples/sample.lua")
+            .expect("sample.lua file doesn't exist"),
         lua_vm,
     });
     eframe::run_native(
@@ -49,7 +49,7 @@ pub fn main() {
             luaegui::register_egui_lua_bindings(&app.lua_vm)
                 .expect("failed to register egui bindings");
             app.lua_vm
-                .load(LUA_GUI_CODE)
+                .load(&app.lua_code)
                 .exec()
                 .expect("failed to execute lua code");
             app

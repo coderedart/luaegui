@@ -34,7 +34,7 @@ pub fn register_egui_lua_bindings(lua: &Lua) -> Result<(), mlua::Error> {
     egui_proxy.set("ui_docs", lua.create_proxy::<UiMutRef>()?)?;
     egui_proxy.set("widget_text", lua.create_proxy::<WidgetText>()?)?;
     egui_proxy.set("vec2", lua.create_proxy::<Vec2>()?)?;
-
+    egui_proxy.set("window", lua.create_proxy::<Window>()?)?;
     lua.globals().set("Egui", egui_proxy)?;
     Ok(())
 }
@@ -76,27 +76,53 @@ macro_rules! lua_registry_scoped_ui_extract {
 
 pub fn get_all_types() -> TypeWalker {
     tealr::TypeWalker::new()
-        .process_type::<UiMutRef>()
-        .process_type::<Context>()
-        .process_type::<Response>()
-        .process_type::<Spacing>()
-        .process_type::<Visuals>()
-        .process_type::<TextStyle>()
-        .process_type::<Painter>()
-        .process_type::<Layout>()
-        .process_type::<Rect>()
-        .process_type::<LayerId>()
-        .process_type::<Color32>()
-        .process_type::<Id>()
-        .process_type::<RichText>()
-        .process_type::<WidgetText>()
-        .process_type::<TextureId>()
-        .process_type::<Vec2>()
-        .process_type::<Sense>()
         .process_type::<Align>()
+        .process_type::<Align2>()
+        .process_type::<CircleShape>()
+        .process_type::<ClippedPrimitive>()
+        .process_type::<ClippedShape>()
+        .process_type::<Color32>()
+        .process_type::<Context>()
+        .process_type::<CubicBezierShape>()
+        .process_type::<CursorIcon>()
+        .process_type::<FontFamily>()
+        .process_type::<FontId>()
+        .process_type::<Frame>()
         .process_type::<Galley>()
-        .process_type::<TextureHandle>()
+        .process_type::<Id>()
+        .process_type::<Interaction>()
+        .process_type::<LayerId>()
+        .process_type::<Layout>()
+        .process_type::<Margin>()
+        .process_type::<Mesh>()
+        .process_type::<Painter>()
+        .process_type::<PathShape>()
+        .process_type::<PointerButton>()
+        .process_type::<Pos2>()
+        .process_type::<Primitive>()
+        .process_type::<Rect>()
+        .process_type::<RectShape>()
+        .process_type::<RectTransform>()
+        .process_type::<Response>()
+        .process_type::<RichText>()
+        .process_type::<Rounding>()
+        .process_type::<Selection>()
+        .process_type::<Sense>()
+        .process_type::<Shadow>()
+        .process_type::<Shape>()
+        .process_type::<Spacing>()
         .process_type::<Style>()
+        .process_type::<Stroke>()
+        .process_type::<TextShape>()
+        .process_type::<TextStyle>()
+        .process_type::<TextureHandle>()
+        .process_type::<TextureId>()
+        .process_type::<UiMutRef>()
+        .process_type::<Vec2>()
+        .process_type::<Visuals>()
+        .process_type::<WidgetText>()
+        .process_type::<WidgetVisuals>()
+        .process_type::<Window>()
 }
 #[macro_export]
 macro_rules! wrapper_from_impl {
@@ -113,6 +139,7 @@ macro_rules! wrapper_from_impl {
         }
     };
 }
+
 // #[macro_export]
 // macro_rules! from_impl {
 //     ($name:ident $etype:path) => {
@@ -146,8 +173,8 @@ where
     fn get_type_body() -> tealr::TypeGenerator {
         let mut gen = tealr::RecordGenerator::new::<Self>(false);
         gen.is_user_data = true;
-        <Self as TealData>::add_fields(&mut gen);
-        <Self as TealData>::add_methods(&mut gen);
+        <Self as tealr::mlu::TealData>::add_fields(&mut gen);
+        <Self as tealr::mlu::TealData>::add_methods(&mut gen);
         gen.into()
     }
 }
@@ -156,7 +183,7 @@ where
 //         v.0
 //     }
 // }
-impl<T> mlua::UserData for Wrapper<T>
+impl<T> tealr::mlu::mlua::UserData for Wrapper<T>
 where
     Wrapper<T>: TealData,
 {
@@ -192,9 +219,9 @@ macro_rules! wrapper {
 
         pub type $name = $crate::Wrapper<$etype>;
 
-        impl TypeName for $name {
+        impl tealr::TypeName for $name {
             fn get_type_parts() -> std::borrow::Cow<'static, [tealr::NamePart]> {
-                new_type!($name)
+                tealr::new_type!($name)
             }
         }
 
@@ -207,7 +234,7 @@ macro_rules! add_fields {
     ($fields:ident, $($field_name:ident : $field_type:ty),*) => {
         $(
         $fields.add_field_method_get(stringify!($field_name), |_, s| {
-            Ok(<$field_type>::from(s.$field_name))
+            Ok(<$field_type>::from(s.$field_name.clone()))
         });
         $fields.add_field_method_set(stringify!($field_name), |_, s, a0: $field_type| {
             s.$field_name = a0.into();

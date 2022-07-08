@@ -1,5 +1,5 @@
 use crate::{
-    lua_registry_scoped_ui_extract, Color32, Context, Id, IntoIdSource, IntoRichText,
+    lua_registry_scoped_ui_extract, Align, Color32, Context, Id, IntoIdSource, IntoRichText,
     IntoTextureId, IntoWidgetText, LayerId, Layout, LuaEguiWidget, Painter, Rect, Response, Sense,
     Spacing, Style, TextStyle, Vec2, Visuals,
 };
@@ -174,12 +174,51 @@ impl<'a> TealData for UiMutRef<'a> {
         wrap_method!(m; cursor;; Rect);
 
         wrap_method!(m; next_widget_position; ; Vec2);
-        // TODO: allocate ui
-        // TODO: allocate ui with layout
-        // TODO: allocate ui at rect
+        methods.add_method_mut(
+            "allocate_ui",
+            |lua, ui, (a0, ui_function): (Vec2, Function)| {
+                let inner_response = ui.allocate_ui(a0.into(), |ui| {
+                    lua_registry_scoped_ui_extract!(lua, ui, |ui| ui_function.call(ui))
+                });
+                Ok((
+                    Response::from(inner_response.response),
+                    inner_response.inner,
+                ))
+            },
+        );
+        methods.add_method_mut(
+            "allocate_ui_with_layout",
+            |lua, ui, (a0, a1, ui_function): (Vec2, Layout, Function)| {
+                let inner_response = ui.allocate_ui_with_layout(a0.into(), a1.into(), |ui| {
+                    lua_registry_scoped_ui_extract!(lua, ui, |ui| ui_function.call(ui))
+                });
+                Ok((
+                    Response::from(inner_response.response),
+                    inner_response.inner,
+                ))
+            },
+        );
+        methods.add_method_mut(
+            "allocate_ui_at_rect",
+            |lua, ui, (a0, ui_function): (Rect, Function)| {
+                let inner_response = ui.allocate_ui_at_rect(a0.into(), |ui| {
+                    lua_registry_scoped_ui_extract!(lua, ui, |ui| ui_function.call(ui))
+                });
+                Ok((
+                    Response::from(inner_response.response),
+                    inner_response.inner,
+                ))
+            },
+        );
         wrap_method!(mm; allocate_painter; Vec2 , Sense; Response , Painter; {let result = (result.0.into(), result.1.into());});
-        // TODO: wrap_method!(m; scroll_to_rect; Rect , Option<Align>);
-        // TODO: scroll_to_cursor
+        methods.add_method("scroll_to_rect", |_, ui, args: (Rect, Option<Align>)| {
+            ui.scroll_to_rect(args.0.into(), args.1.map(Into::into));
+            Ok(())
+        });
+        methods.add_method("scroll_to_cursor", |_, ui, a0: Option<Align>| {
+            ui.scroll_to_cursor(a0.map(Into::into));
+            Ok(())
+        });
         wrap_method!(m; scroll_with_delta; Vec2);
 
         // adding Widgets
