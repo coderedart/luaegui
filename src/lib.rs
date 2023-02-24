@@ -9,6 +9,7 @@ pub use context::*;
 pub use egui;
 pub use others::*;
 pub use response::*;
+pub use tealr;
 use tealr::{
     mlu::{
         mlua::{self, Lua, UserDataMethods},
@@ -20,6 +21,11 @@ pub use ui::*;
 pub use widget::*;
 
 use derive_more::*;
+
+
+pub fn new_lua() -> tealr::mlu::mlua::Lua {
+     tealr::mlu::mlua::Lua::new()
+}
 #[derive(Clone, Default, MluaTealDerive)]
 pub struct EguiProxy;
 impl TealData for EguiProxy {}
@@ -77,7 +83,7 @@ macro_rules! lua_registry_scoped_ui_extract {
 pub fn get_all_types() -> TypeWalker {
     tealr::TypeWalker::new()
         .process_type::<Align>()
-        .process_type::<Align2>()
+        .process_type::<Align2>()   
         .process_type::<CircleShape>()
         .process_type::<ClippedPrimitive>()
         .process_type::<ClippedShape>()

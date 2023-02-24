@@ -16,18 +16,17 @@ derive_more = { version = "*", default-features = false, features = [
     "as_ref",
     "as_mut",
 ] }
-egui = "0.18.1"
-tealr = { version = "*", git = "https://github.com/coderedart/tealr.git", branch = "mlua_update", features = [
-    "mlua_luajit",
+egui = "0.20.1"
+tealr = { version = "*", path = "../tealr", features = [
+    "mlua_luau",
     "derive",
+    "mlua_vendored",
 ], default-features = false }
 luaegui_derive = { version = "*", path = "./luaegui_derive" }
 
 [dev-dependencies]
-eframe = "0.18.0"
+eframe = "0.20.1"
 serde_json = "*"
 
 [workspace]
-members = [
-    "luaegui_derive"
-]
+members = ["luaegui_derive"]

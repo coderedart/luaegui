@@ -13,6 +13,8 @@ impl<'lua> tealr::TypeName for Window<'lua> {
 }
 
 impl<'a> TealData for Window<'a> {
+    fn add_fields<'lua, F: tealr::mlu::TealDataFields<'lua, Self>>(_fields: &mut F) {}
+
     fn add_methods<'lua, T: tealr::mlu::TealDataMethods<'lua, Self>>(methods: &mut T) {
         methods.document(r#" This is the function you use to create a new window.
         This function will need three arguments;
@@ -177,8 +179,6 @@ impl<'a> TealData for Window<'a> {
             Ok(multi_value)
         });
     }
-
-    fn add_fields<'lua, F: tealr::mlu::TealDataFields<'lua, Self>>(_fields: &mut F) {}
 }
 
 wrapper!(Resize egui::containers::Resize);

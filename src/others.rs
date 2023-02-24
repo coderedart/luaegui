@@ -346,7 +346,7 @@ impl TealData for Stroke {
         methods
             .document_type("egui docs link: https://docs.rs/egui/latest/egui/struct.Stroke.html");
 
-        methods.add_function("none", |_, ()| Ok(Self::from(egui::Stroke::none())));
+        methods.add_function("none", |_, ()| Ok(Self::from(egui::Stroke::NONE)));
         methods.add_function("new", |_, (a0, a1): (f32, Color32)| {
             Ok(Self::from(egui::Stroke::new(a0, a1)))
         });
