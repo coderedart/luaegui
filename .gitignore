@@ -1,5 +1,2 @@
 **/target
 /Cargo.lock
-/.vscode
-/luaeguidocs.json
-/pages

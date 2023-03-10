@@ -8,25 +8,5 @@ edition = "2021"
 [features]
 
 [dependencies]
-derive_more = { version = "*", default-features = false, features = [
-    "from",
-    "deref",
-    "deref_mut",
-    "from",
-    "as_ref",
-    "as_mut",
-] }
-egui = "0.20.1"
-tealr = { version = "*", path = "../tealr", features = [
-    "mlua_luau",
-    "derive",
-    "mlua_vendored",
-], default-features = false }
-luaegui_derive = { version = "*", path = "./luaegui_derive" }
-
-[dev-dependencies]
-eframe = "0.20.1"
-serde_json = "*"
-
-[workspace]
-members = ["luaegui_derive"]
+egui = "0.21.0"
+mlua = { git = "https://github.com/khvzak/mlua.git", features = ["luau"] }
