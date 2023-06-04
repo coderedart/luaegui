@@ -8,5 +8,10 @@ edition = "2021"
 [features]
 
 [dependencies]
-egui = "0.21.0"
-mlua = { git = "https://github.com/khvzak/mlua.git", features = ["luau"] }
+egui = "0.22"
+mlua = { version = "0.9.0-beta.2", features = ["luau"] }
+
+[dev-dependencies]
+egui_backend = "0.4"
+egui_window_glfw_passthrough = "0.4"
+egui_render_wgpu = "0.4"
