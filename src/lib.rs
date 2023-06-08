@@ -47,6 +47,43 @@ fn add_context(lua: &Lua, _: &Table) -> mlua::Result<()> {
             this.request_repaint_after(std::time::Duration::from_secs_f64(duration));
             Ok(())
         });
+        reg.add_method(
+            "new_window",
+            |lua, this, (window_options, add_contents): (Table, Function)| {
+                let title: Value = window_options.get("title")?;
+                let mut open = true;
+                let mut window_option_open_exists = false;
+                let mut window = egui::Window::new(WidgetText::from_lua(title)?);
+                if let Ok(o) = window_options.get("open") {
+                    open = o;
+                    window_option_open_exists = true;
+                    window = window.open(&mut open)
+                }
+
+                let ir = window.show(this, |ui| {
+                    lua.scope(|scope| {
+                        let ui = scope.create_any_userdata_ref_mut(ui)?;
+                        let result: Result<MultiValue> = add_contents.call(ui);
+                        result
+                    })
+                });
+                if window_option_open_exists {
+                    window_options.set("open", open)?;
+                }
+                let mut result = MultiValue::new();
+                if let Some(ir) = ir {
+                    let response = lua.create_any_userdata(ir.response)?;
+                    result.push_front(Value::UserData(response));
+                    if let Some(inner) = ir.inner {
+                        let inner = inner?;
+                        for v in inner {
+                            result.push_front(v);
+                        }
+                    }
+                }
+                Ok(result)
+            },
+        );
     })?;
     Ok(())
 }

@@ -25,11 +25,13 @@ fn fake_main() {
         window_backend: glfw_backend,
         lua,
         code: LUA_CODE.to_string(),
+        script_time: std::time::Duration::ZERO,
     };
     GlfwBackend::run_event_loop(app);
 }
 
 struct AppData<W: WindowBackend, G: GfxBackend> {
+    pub script_time: std::time::Duration,
     pub lua: mlua::Lua,
     pub code: String,
     pub egui_context: egui::Context,
@@ -64,17 +66,32 @@ impl<W: WindowBackend, G: GfxBackend> UserApp for AppData<W, G> {
                 self.lua.load(&self.code).exec().unwrap();
             }
             ui.code_editor(&mut self.code);
+            ui.horizontal(|ui| {
+                ui.label("script execution time (micros): ");
+                ui.label(format!("{}", self.script_time.as_micros()));
+            });
         });
-
+        let start = std::time::Instant::now();
         if let Ok(f) = self.lua.globals().get::<_, Function>("gui_run") {
             let c = self.lua.create_any_userdata(ctx).unwrap();
             let _: () = f.call(c).unwrap();
         }
+        self.script_time = start.elapsed();
     }
 }
 
 const LUA_CODE: &str = r#"
+window_options = {
+    title = "My Lua Window",
+    open = false
+}
+function show_fn(ui)
+    ui:label("hello");
+    if ui:button("lua button"):clicked() then
+        print("lua button clicked");
+    end
+end
 function gui_run(ctx)
-
+    ctx:new_window(window_options, show_fn);
 end
 "#;
