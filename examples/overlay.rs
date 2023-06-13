@@ -63,7 +63,12 @@ impl<W: WindowBackend, G: GfxBackend> UserApp for AppData<W, G> {
         let ctx = self.egui_context.clone();
         Window::new("My Window").show(&ctx, |ui| {
             if ui.button("run").clicked() {
-                self.lua.load(&self.code).exec().unwrap();
+                if let Err(e) = self.lua.load(&self.code).exec() {
+                    eprintln!("lua load error: {e:?}");
+                }
+            }
+            if !self.lua.globals().contains_key("gui_run").unwrap() {
+                ui.colored_label(Color32::RED, "gui_run fn is not defined");
             }
             ui.code_editor(&mut self.code);
             ui.horizontal(|ui| {
@@ -83,8 +88,15 @@ impl<W: WindowBackend, G: GfxBackend> UserApp for AppData<W, G> {
 const LUA_CODE: &str = r#"
 window_options = {
     title = "My Lua Window",
-    open = false
+    open = true
 }
+area = egui.area.new("lua area");
+
+function area_ui(ui)
+    if ui:button("frame button"):clicked() then
+        print("frame button clicked");
+    end
+end
 function show_fn(ui)
     ui:label("hello");
     if ui:button("lua button"):clicked() then
@@ -93,5 +105,6 @@ function show_fn(ui)
 end
 function gui_run(ctx)
     ctx:new_window(window_options, show_fn);
+    area:show(ctx, area_ui);
 end
 "#;

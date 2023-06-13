@@ -1,11 +1,13 @@
 use egui::{
+    epaint::Shadow,
     style::{Spacing, WidgetVisuals},
-    Align, Align2, Color32, Context, Direction, Id, Layout, Margin, PointerButton, Pos2, Rect,
-    RichText, Rounding, Sense, Stroke, TextureHandle, Ui, Vec2, WidgetText,
+    Align, Align2, Area, Color32, Context, Direction, Frame, Id, Layout, Margin, PointerButton,
+    Pos2, Rect, RichText, Rounding, Sense, Stroke, Style, TextStyle, TextureHandle, Ui, Vec2,
+    WidgetText,
 };
 use mlua::{
     AnyUserData, Function, Lua, MultiValue, Result, Table, UserDataFields, UserDataMethods,
-    UserDataRef, UserDataRegistrar, Value,
+    UserDataRef, UserDataRefMut, UserDataRegistrar, Value,
 };
 
 trait LuaHelperTrait: Sized {
@@ -17,20 +19,33 @@ trait LuaHelperTrait: Sized {
 pub fn register_egui_bindings(lua: &Lua) -> mlua::Result<()> {
     let et = lua.create_table()?;
     let egui_table = &et;
-    PointerButton::add_to_lua(lua, egui_table)?;
     Align::add_to_lua(lua, egui_table)?;
     Align2::add_to_lua(lua, egui_table)?;
     Color32::add_to_lua(lua, egui_table)?;
-    Stroke::add_to_lua(lua, egui_table)?;
+    Direction::add_to_lua(lua, egui_table)?;
+    Id::add_to_lua(lua, egui_table)?;
+    Margin::add_to_lua(lua, egui_table)?;
+    PointerButton::add_to_lua(lua, egui_table)?;
+    Pos2::add_to_lua(lua, egui_table)?;
     Rect::add_to_lua(lua, egui_table)?;
+    RichText::add_to_lua(lua, egui_table)?;
     Rounding::add_to_lua(lua, egui_table)?;
-    add_spacing(lua, egui_table)?;
-    add_layout(lua, egui_table)?;
-    add_widget_visuals(lua, egui_table)?;
-    add_id(lua, egui_table)?;
+    Sense::add_to_lua(lua, egui_table)?;
+    Stroke::add_to_lua(lua, egui_table)?;
+    TextStyle::add_to_lua(lua, egui_table)?;
+    Vec2::add_to_lua(lua, egui_table)?;
+    WidgetText::add_to_lua(lua, egui_table)?;
+
+    add_area(lua, egui_table)?;
     add_context(lua, egui_table)?;
+    add_frame(lua, egui_table)?;
+    add_layout(lua, egui_table)?;
     add_response(lua)?;
+    add_shadow(lua, egui_table)?;
+    add_spacing(lua, egui_table)?;
+    add_style(lua, egui_table)?;
     add_ui(lua, egui_table)?;
+    add_widget_visuals(lua, egui_table)?;
 
     egui_table.set_readonly(true);
     lua.globals().set("egui", et)?;
@@ -87,32 +102,66 @@ fn add_context(lua: &Lua, _: &Table) -> mlua::Result<()> {
     })?;
     Ok(())
 }
-fn add_id(lua: &Lua, egui_table: &Table) -> mlua::Result<()> {
-    let id = lua.create_table()?;
-    lua.register_userdata_type(|reg: &mut UserDataRegistrar<Id>| {
-        reg.add_method("with", |lua, this, value: Value| {
-            lua.create_any_userdata(match value {
-                Value::Nil => Id::null(),
-                Value::Boolean(b) => this.with(b),
-                Value::Integer(b) => this.with(b),
-                Value::String(b) => this.with(b),
-                _ => {
-                    return Err(mlua::Error::FromLuaConversionError {
-                        from: "value",
-                        to: "hash_for_egui_id",
-                        message: None,
-                    })
-                }
-            })
-        });
-        reg.add_method("short_debug_format", |_, this, ()| {
-            Ok(this.short_debug_format())
-        });
-    })?;
-    id.set("null", lua.create_any_userdata(Id::null())?)?;
-    egui_table.set("id", id)?;
-    Ok(())
+
+impl LuaHelperTrait for Id {
+    fn from_lua(value: Value) -> Result<Self> {
+        Ok(match value {
+            Value::Nil => Id::null(),
+            Value::String(s) => Id::null().with(s.to_str().unwrap_or_default()),
+            Value::UserData(u) => {
+                *u.borrow()
+                    .map_err(|_e| mlua::Error::FromLuaConversionError {
+                        from: "Value",
+                        to: "Id",
+                        message: Some(
+                            "The variant of value is not suitable for converting to Id".to_string(),
+                        ),
+                    })?
+            }
+            _ => {
+                return Err(mlua::Error::FromLuaConversionError {
+                    from: "Value",
+                    to: "Id",
+                    message: Some(
+                        "The variant of value is not suitable for converting to Id".to_string(),
+                    ),
+                })
+            }
+        })
+    }
+
+    fn to_lua(_value: Self, _lua: &Lua) -> Result<Value> {
+        todo!()
+    }
+
+    fn add_to_lua(lua: &Lua, egui_table: &Table) -> Result<()> {
+        let id = lua.create_table()?;
+        lua.register_userdata_type(|reg: &mut UserDataRegistrar<Id>| {
+            reg.add_method("with", |lua, this, value: Value| {
+                lua.create_any_userdata(match value {
+                    Value::Nil => Id::null(),
+                    Value::Boolean(b) => this.with(b),
+                    Value::Integer(b) => this.with(b),
+                    Value::String(b) => this.with(b),
+                    _ => {
+                        return Err(mlua::Error::FromLuaConversionError {
+                            from: "value",
+                            to: "hash_for_egui_id",
+                            message: None,
+                        })
+                    }
+                })
+            });
+            reg.add_method("short_debug_format", |_, this, ()| {
+                Ok(this.short_debug_format())
+            });
+        })?;
+        id.set("null", lua.create_any_userdata(Id::null())?)?;
+        egui_table.set("id", id)?;
+        Ok(())
+    }
 }
+
 fn add_widget_visuals(lua: &Lua, egui_table: &Table) -> mlua::Result<()> {
     let id = lua.create_table()?;
     lua.register_userdata_type(|reg: &mut UserDataRegistrar<WidgetVisuals>| {
@@ -200,8 +249,7 @@ fn add_layout(lua: &Lua, egui_table: &Table) -> mlua::Result<()> {
     egui_table.set("layout", layout)?;
     Ok(())
 }
-fn add_spacing(lua: &Lua, egui_table: &Table) -> mlua::Result<()> {
-    let id = lua.create_table()?;
+fn add_spacing(lua: &Lua, _egui_table: &Table) -> mlua::Result<()> {
     lua.register_userdata_type(|reg: &mut UserDataRegistrar<Spacing>| {
         reg.add_field_method_get("item_spacing", |lua, this| {
             Vec2::to_lua(this.item_spacing, lua)
@@ -263,8 +311,6 @@ fn add_spacing(lua: &Lua, egui_table: &Table) -> mlua::Result<()> {
         //     |_, this, value: f32| Ok(this.expansion = value),
         // );
     })?;
-    id.set("null", lua.create_any_userdata(Id::null())?)?;
-    egui_table.set("id", id)?;
     Ok(())
 }
 fn add_response(lua: &Lua) -> mlua::Result<()> {
@@ -1048,7 +1094,53 @@ impl LuaHelperTrait for Margin {
         Ok(Value::Table(margin))
     }
 }
+impl LuaHelperTrait for TextStyle {
+    fn from_lua(value: Value) -> Result<Self> {
+        match value {
+            Value::Integer(i) => Ok(match i {
+                0 => Self::Small,
+                1 => Self::Body,
+                2 => Self::Monospace,
+                3 => Self::Button,
+                4 => Self::Heading,
+                _ => {
+                    return Err(mlua::Error::RuntimeError(format!(
+                        "the value {i} doesn't match any TextStyle enum variants"
+                    )))
+                }
+            }),
+            Value::String(s) => Ok(Self::Name(s.to_str().unwrap_or_default().into())),
+            _ => {
+                return Err(mlua::Error::RuntimeError(format!(
+                    "invalid type to convert to TextStyle enum variants"
+                )))
+            }
+        }
+    }
 
+    fn to_lua(value: Self, lua: &Lua) -> Result<Value> {
+        Ok(match value {
+            TextStyle::Small => Value::Integer(0),
+            TextStyle::Body => Value::Integer(1),
+            TextStyle::Monospace => Value::Integer(2),
+            TextStyle::Button => Value::Integer(3),
+            TextStyle::Heading => Value::Integer(4),
+            TextStyle::Name(n) => Value::String(lua.create_string(n.as_bytes())?),
+        })
+    }
+
+    fn add_to_lua(lua: &Lua, egui_table: &Table) -> Result<()> {
+        let text_style = lua.create_table()?;
+        text_style.set("small", Value::Integer(0))?;
+        text_style.set("body", Value::Integer(1))?;
+        text_style.set("monospace", Value::Integer(2))?;
+        text_style.set("button", Value::Integer(3))?;
+        text_style.set("heading", Value::Integer(4))?;
+        text_style.set_readonly(true);
+        egui_table.set("text_style", text_style)?;
+        Ok(())
+    }
+}
 impl LuaHelperTrait for Rounding {
     fn add_to_lua(lua: &Lua, egui_table: &Table) -> mlua::Result<()> {
         let rounding = lua.create_table()?;
@@ -1600,4 +1692,159 @@ impl<'lua> LuaHashable<'lua> {
             }),
         }
     }
+}
+fn add_style(lua: &Lua, egui_table: &Table) -> Result<()> {
+    lua.register_userdata_type(|style: &mut UserDataRegistrar<Style>| {
+        style.add_method_mut("ui", |_, this, mut ui: UserDataRefMut<Ui>| {
+            this.ui(&mut ui);
+            Ok(())
+        });
+    })?;
+    let style = lua.create_table()?;
+    style.set(
+        "default",
+        lua.create_function(|lua, _: ()| lua.create_any_userdata(Style::default()))?,
+    )?;
+    egui_table.set("style", style)?;
+    Ok(())
+}
+fn add_frame(lua: &Lua, egui_table: &Table) -> Result<()> {
+    let frame = lua.create_table()?;
+    frame.set(
+        "none",
+        lua.create_function(|lua, _: ()| lua.create_any_userdata(Frame::none()))?,
+    )?;
+    frame.set(
+        "group",
+        lua.create_function(|lua, style: UserDataRef<Style>| {
+            lua.create_any_userdata(Frame::group(&style))
+        })?,
+    )?;
+    frame.set(
+        "side_top_panel",
+        lua.create_function(|lua, style: UserDataRef<Style>| {
+            lua.create_any_userdata(Frame::side_top_panel(&style))
+        })?,
+    )?;
+    frame.set(
+        "central_panel",
+        lua.create_function(|lua, style: UserDataRef<Style>| {
+            lua.create_any_userdata(Frame::central_panel(&style))
+        })?,
+    )?;
+    frame.set(
+        "window",
+        lua.create_function(|lua, style: UserDataRef<Style>| {
+            lua.create_any_userdata(Frame::window(&style))
+        })?,
+    )?;
+    frame.set(
+        "menu",
+        lua.create_function(|lua, style: UserDataRef<Style>| {
+            lua.create_any_userdata(Frame::menu(&style))
+        })?,
+    )?;
+    frame.set(
+        "popup",
+        lua.create_function(|lua, style: UserDataRef<Style>| {
+            lua.create_any_userdata(Frame::popup(&style))
+        })?,
+    )?;
+    frame.set(
+        "canvas",
+        lua.create_function(|lua, style: UserDataRef<Style>| {
+            lua.create_any_userdata(Frame::canvas(&style))
+        })?,
+    )?;
+    frame.set(
+        "dark_canvas",
+        lua.create_function(|lua, style: UserDataRef<Style>| {
+            lua.create_any_userdata(Frame::dark_canvas(&style))
+        })?,
+    )?;
+    egui_table.set("frame", frame)?;
+    lua.register_userdata_type(|frame: &mut UserDataRegistrar<Frame>| {
+        frame.add_field_method_get("inner_margin", |lua, this| -> Result<Value> {
+            Margin::to_lua(this.inner_margin, lua)
+        });
+        frame.add_field_method_get("outer_margin", |lua, this| -> Result<Value> {
+            Margin::to_lua(this.outer_margin, lua)
+        });
+        frame.add_field_method_get("rounding", |lua, this| -> Result<Value> {
+            Rounding::to_lua(this.rounding, lua)
+        });
+        frame.add_field_method_get("shadow", |lua, this| -> Result<Value> {
+            Ok(Value::UserData(lua.create_any_userdata(this.shadow)?))
+        });
+        frame.add_field_method_get("fill", |lua, this| -> Result<Value> {
+            Color32::to_lua(this.fill, lua)
+        });
+        frame.add_field_method_get("stroke", |lua, this| -> Result<Value> {
+            Stroke::to_lua(this.stroke, lua)
+        });
+
+        frame.add_method(
+            "show",
+            |lua, this, (mut ui, add_contents): (UserDataRefMut<Ui>, Function)| {
+                let frame = *this;
+                frame.show(&mut ui, |ui| {
+                    lua.scope(|scope| {
+                        let ui = scope.create_any_userdata_ref_mut(ui)?;
+                        let _: () = add_contents.call(ui)?;
+                        Ok(())
+                    })
+                    .unwrap();
+                });
+                Ok(())
+            },
+        )
+    })?;
+    Ok(())
+}
+fn add_shadow(lua: &Lua, _egui_table: &Table) -> Result<()> {
+    lua.register_userdata_type(|shadow: &mut UserDataRegistrar<Shadow>| {
+        shadow.add_field_method_get("extrusion", |_, this| Ok(this.extrusion));
+        shadow.add_field_method_get("color", |lua, this| Color32::to_lua(this.color, lua));
+        shadow.add_field_method_set("extrusion", |_, this, extrusion: f32| {
+            this.extrusion = extrusion;
+            Ok(())
+        });
+        shadow.add_field_method_set("color", |_lua, this, color: Value| {
+            this.color = Color32::from_lua(color)?;
+            Ok(())
+        });
+    })?;
+    Ok(())
+}
+
+fn add_area(lua: &Lua, egui_table: &Table) -> Result<()> {
+    lua.register_userdata_type(|area: &mut UserDataRegistrar<Area>| {
+        area.add_method(
+            "show",
+            |lua, this, (ctx, add_contents): (UserDataRef<Context>, Function)| {
+                let area = *this;
+                let ctx = ctx.clone();
+                area.show(&ctx, |ui| {
+                    lua.scope(|scope| {
+                        let ui = scope.create_any_userdata_ref_mut(ui)?;
+                        let _: () = add_contents.call(ui)?;
+                        Ok(())
+                    })
+                    .unwrap();
+                });
+                Ok(())
+            },
+        )
+    })?;
+    let area = lua.create_table()?;
+    area.set(
+        "new",
+        lua.create_function(|lua, value: Value| {
+            let area = Area::new(Id::from_lua(value)?);
+            let ud = lua.create_any_userdata(area)?;
+            Ok(Value::UserData(ud))
+        })?,
+    )?;
+    egui_table.set("area", area)?;
+    Ok(())
 }
