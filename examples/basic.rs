@@ -90,21 +90,16 @@ window_options = {
     title = "My Lua Window",
     open = true
 }
-area = egui.area.new("lua area");
-
-function area_ui(ui)
-    if ui:button("frame button"):clicked() then
-        print("frame button clicked");
-    end
-end
 function show_fn(ui)
     ui:label("hello");
-    if ui:button("lua button"):clicked() then
-        print("lua button clicked");
+    if ui:
+       button("cute button"):
+       clicked() then
+
+        print("cute button tapped");
     end
 end
 function gui_run(ctx)
     ctx:new_window(window_options, show_fn);
-    area:show(ctx, area_ui);
 end
 "#;
