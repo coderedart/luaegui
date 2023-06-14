@@ -1,0 +1,26 @@
+name: Github Pages
+
+on: [push]
+
+permissions:
+  contents: write
+
+jobs:
+  build-github-pages:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2 # repo checkout
+      - uses: mymindstorm/setup-emsdk@v11 # setup emscripten toolchain
+      - uses: actions-rs/toolchain@v1 # get rust toolchain for wasm
+        with:
+          toolchain: stable
+          target: wasm32-unknown-emscripten
+          override: true
+      - name: Rust Cache # cache the rust build artefacts
+        uses: Swatinem/rust-cache@v1
+      - name: Build # build
+        run: ./build_web.sh
+      - name: Deploy
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: dist

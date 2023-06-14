@@ -1,9 +1,9 @@
 use egui::{
     epaint::Shadow,
     style::{Spacing, WidgetVisuals},
-    Align, Align2, Area, Color32, Context, Direction, Frame, Id, Layout, Margin, PointerButton,
-    Pos2, Rect, RichText, Rounding, Sense, Stroke, Style, TextStyle, TextureHandle, Ui, Vec2,
-    WidgetText,
+    Align, Align2, Area, Color32, Context, Direction, Frame, Id, LayerId, Layout, Margin, Order,
+    PointerButton, Pos2, Rect, RichText, Rounding, Sense, Stroke, Style, TextStyle, TextureHandle,
+    Ui, Vec2, WidgetText,
 };
 use mlua::{
     AnyUserData, Function, Lua, MultiValue, Result, Table, UserDataFields, UserDataMethods,
@@ -39,6 +39,7 @@ pub fn register_egui_bindings(lua: &Lua) -> mlua::Result<()> {
     add_area(lua, egui_table)?;
     add_context(lua, egui_table)?;
     add_frame(lua, egui_table)?;
+    add_layer_id(lua, egui_table)?;
     add_layout(lua, egui_table)?;
     add_response(lua)?;
     add_shadow(lua, egui_table)?;
@@ -46,6 +47,7 @@ pub fn register_egui_bindings(lua: &Lua) -> mlua::Result<()> {
     add_style(lua, egui_table)?;
     add_ui(lua, egui_table)?;
     add_widget_visuals(lua, egui_table)?;
+    // add_window(lua, egui_table)?;
 
     egui_table.set_readonly(true);
     lua.globals().set("egui", et)?;
@@ -130,12 +132,12 @@ impl LuaHelperTrait for Id {
         })
     }
 
-    fn to_lua(_value: Self, _lua: &Lua) -> Result<Value> {
-        todo!()
+    fn to_lua(value: Self, lua: &Lua) -> Result<Value> {
+        lua.create_any_userdata(value).map(Value::UserData)
     }
 
     fn add_to_lua(lua: &Lua, egui_table: &Table) -> Result<()> {
-        let id = lua.create_table()?;
+        let id: Table<'_> = lua.create_table()?;
         lua.register_userdata_type(|reg: &mut UserDataRegistrar<Id>| {
             reg.add_method("with", |lua, this, value: Value| {
                 lua.create_any_userdata(match value {
@@ -1816,9 +1818,141 @@ fn add_shadow(lua: &Lua, _egui_table: &Table) -> Result<()> {
     })?;
     Ok(())
 }
+impl LuaHelperTrait for Order {
+    fn from_lua(value: Value) -> Result<Self> {
+        match value {
+            Value::Integer(i) => Ok(match i {
+                0 => Self::Background,
+                1 => Self::PanelResizeLine,
+                2 => Self::Middle,
+                3 => Self::Foreground,
+                4 => Self::Tooltip,
+                5 => Self::Debug,
+                _ => {
+                    return Err(mlua::Error::FromLuaConversionError {
+                        from: "Integer",
+                        to: "Order",
+                        message: Some("Integer value none of the enum variants".to_string()),
+                    })
+                }
+            }),
+            _ => Err(mlua::Error::FromLuaConversionError {
+                from: "value",
+                to: "Order",
+                message: None,
+            }),
+        }
+    }
 
+    fn to_lua(value: Self, _lua: &Lua) -> Result<Value> {
+        Ok(Value::Integer(match value {
+            Order::Background => 0,
+            Order::PanelResizeLine => 1,
+            Order::Middle => 2,
+            Order::Foreground => 3,
+            Order::Tooltip => 4,
+            Order::Debug => 5,
+        }))
+    }
+
+    fn add_to_lua(lua: &Lua, egui_table: &Table) -> Result<()> {
+        let order = lua.create_table()?;
+        order.set("Background", Self::to_lua(Self::Background, lua)?)?;
+        order.set("PanelResizeLine", Self::to_lua(Self::PanelResizeLine, lua)?)?;
+        order.set("Middle", Self::to_lua(Self::Middle, lua)?)?;
+        order.set("Foreground", Self::to_lua(Self::Foreground, lua)?)?;
+        order.set("Tooltip", Self::to_lua(Self::Tooltip, lua)?)?;
+        order.set("Debug", Self::to_lua(Self::Debug, lua)?)?;
+        egui_table.set("order", order)?;
+        Ok(())
+    }
+}
+
+fn add_layer_id(lua: &Lua, egui_table: &Table) -> Result<()> {
+    lua.register_userdata_type(|layer_id: &mut UserDataRegistrar<LayerId>| {
+        layer_id.add_field_method_get("order", |lua, this| Order::to_lua(this.order, lua));
+        layer_id.add_field_method_get("id", |lua, this| Id::to_lua(this.id, lua));
+        layer_id.add_field_method_set("order", |_, this, order: Value| {
+            this.order = Order::from_lua(order)?;
+            Ok(())
+        });
+        layer_id.add_field_method_set("id", |_, this, value: Value| {
+            this.id = Id::from_lua(value)?;
+            Ok(())
+        });
+        layer_id.add_method("allow_interaction", |_, this, _: ()| {
+            Ok(this.allow_interaction())
+        });
+        layer_id.add_method("short_debug_format", |_, this, _: ()| {
+            Ok(this.short_debug_format())
+        });
+    })?;
+    let layer_id = lua.create_table()?;
+    layer_id.set(
+        "new",
+        lua.create_function(|lua, (order, id): (Value, Value)| {
+            lua.create_any_userdata(LayerId::new(Order::from_lua(order)?, Id::from_lua(id)?))
+        })?,
+    )?;
+    layer_id.set(
+        "debug",
+        lua.create_function(|lua, _: ()| lua.create_any_userdata(LayerId::debug()))?,
+    )?;
+    layer_id.set(
+        "background",
+        lua.create_function(|lua, _: ()| lua.create_any_userdata(LayerId::background()))?,
+    )?;
+    egui_table.set("layer_id", layer_id)?;
+    Ok(())
+}
 fn add_area(lua: &Lua, egui_table: &Table) -> Result<()> {
     lua.register_userdata_type(|area: &mut UserDataRegistrar<Area>| {
+        area.add_method_mut("anchor", |_, this, (align, offset): (Value, Value)| {
+            *this = this.anchor(Align2::from_lua(align)?, Vec2::from_lua(offset)?);
+            Ok(())
+        });
+        area.add_method_mut("constrain", |_, this, constrain: bool| {
+            *this = this.constrain(constrain);
+            Ok(())
+        });
+        area.add_method_mut("current_pos", |_, this, current_pos: Value| {
+            *this = this.current_pos(Pos2::from_lua(current_pos)?);
+            Ok(())
+        });
+        area.add_method_mut("default_pos", |_, this, default_pos: Value| {
+            *this = this.default_pos(Pos2::from_lua(default_pos)?);
+            Ok(())
+        });
+        area.add_method_mut("drag_bounds", |_, this, bounds: Value| {
+            *this = this.drag_bounds(Rect::from_lua(bounds)?);
+            Ok(())
+        });
+        area.add_method_mut("enabled", |_, this, enabled: bool| {
+            *this = this.enabled(enabled);
+            Ok(())
+        });
+        area.add_method_mut("movable", |_, this, movable: bool| {
+            *this = this.movable(movable);
+            Ok(())
+        });
+        area.add_method_mut("interactable", |_, this, interactable: bool| {
+            *this = this.interactable(interactable);
+            Ok(())
+        });
+        area.add_method("is_movable", |_, this, _: ()| Ok(this.is_movable()));
+        area.add_method("is_enabled", |_, this, _: ()| Ok(this.is_enabled()));
+
+        area.add_method_mut("fixed_pos", |_, this, value: Value| {
+            *this = this.fixed_pos(Pos2::from_lua(value)?);
+            Ok(())
+        });
+        area.add_method_mut("id", |_, this, id: UserDataRef<Id>| {
+            *this = this.id(*id);
+            Ok(())
+        });
+        area.add_method("layer", |lua, this, _: ()| {
+            lua.create_any_userdata(this.layer())
+        });
         area.add_method(
             "show",
             |lua, this, (ctx, add_contents): (UserDataRef<Context>, Function)| {
@@ -1848,3 +1982,78 @@ fn add_area(lua: &Lua, egui_table: &Table) -> Result<()> {
     egui_table.set("area", area)?;
     Ok(())
 }
+
+// fn add_window(lua: &Lua, egui_table: &Table) -> Result<()> {
+//     lua.register_userdata_type(|window: &mut UserDataRegistrar<Window<'static>>| {
+//         window.add_method_mut("anchor", |_, this, (align, offset): (Value, Value)| {
+//             let w = this.anchor(Align2::from_lua(align)?, Vec2::from_lua(offset)?);
+//             *this = w;
+//             Ok(())
+//         });
+//         window.add_method_mut("constrain", |_, this, constrain: bool| {
+//             *this = this.constrain(constrain);
+//             Ok(())
+//         });
+//         window.add_method_mut("current_pos", |_, this, current_pos: Value| {
+//             *this = this.current_pos(Pos2::from_lua(current_pos)?);
+//             Ok(())
+//         });
+//         window.add_method_mut("default_pos", |_, this, default_pos: Value| {
+//             *this = this.default_pos(Pos2::from_lua(default_pos)?);
+//             Ok(())
+//         });
+//         window.add_method_mut("drag_bounds", |_, this, bounds: Value| {
+//             *this = this.drag_bounds(Rect::from_lua(bounds)?);
+//             Ok(())
+//         });
+//         window.add_method_mut("enabled", |_, this, enabled: bool| {
+//             *this = this.enabled(enabled);
+//             Ok(())
+//         });
+//         window.add_method_mut("movable", |_, this, movable: bool| {
+//             *this = this.movable(movable);
+//             Ok(())
+//         });
+//         window.add_method_mut("interactable", |_, this, interactable: bool| {
+//             *this = this.interactable(interactable);
+//             Ok(())
+//         });
+//         window.add_method_mut("fixed_pos", |_, this, value: Value| {
+//             *this = this.fixed_pos(Pos2::from_lua(value)?);
+//             Ok(())
+//         });
+//         window.add_method_mut("id", |_, this, id: UserDataRef<Id>| {
+//             *this = this.id(*id);
+//             Ok(())
+//         });
+//         window.add_method(
+//             "show",
+//             |lua,
+//              this,
+//              (ctx, add_contents, open_table): (UserDataRef<Context>, Function, Table)| {
+//                 let window = *this;
+//                 let ctx = ctx.clone();
+
+//                 window.show(&ctx, |ui| {
+//                     lua.scope(|scope| {
+//                         let ui = scope.create_any_userdata_ref_mut(ui)?;
+//                         let _: () = add_contents.call(ui)?;
+//                         Ok(())
+//                     })
+//                     .unwrap();
+//                 });
+//                 Ok(())
+//             },
+//         )
+//     })?;
+//     let window = lua.create_table()?;
+//     window.set(
+//         "new",
+//         lua.create_function(|lua, title: Value| {
+//             let w = Window::<'static>::new(WidgetText::from_lua(title)?);
+//             lua.create_any_userdata(w)
+//         })?,
+//     )?;
+//     egui_table.set("window", window)?;
+//     Ok(())
+// }

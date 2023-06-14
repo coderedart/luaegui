@@ -1,5 +1,5 @@
 use egui_backend::{BackendConfig, GfxBackend, UserApp, WindowBackend};
-use egui_render_wgpu::WgpuBackend;
+use egui_render_glow::GlowBackend;
 use egui_window_glfw_passthrough::GlfwBackend;
 use mlua::Function;
 
@@ -8,21 +8,21 @@ fn main() {
 }
 
 fn fake_main() {
-    let mut glfw_backend = GlfwBackend::new(
+    let mut window_backend = GlfwBackend::new(
         Default::default(),
         BackendConfig {
-            is_opengl: false,
+            is_opengl: true,
             opengl_config: Default::default(),
             transparent: None,
         },
     );
-    let wgpu_backend = WgpuBackend::new(&mut glfw_backend, Default::default());
+    let gfx_backend = GlowBackend::new(&mut window_backend, Default::default());
     let lua = mlua::Lua::new();
     luaegui::register_egui_bindings(&lua).unwrap();
     let app = AppData {
         egui_context: Default::default(),
-        gfx_backend: wgpu_backend,
-        window_backend: glfw_backend,
+        gfx_backend,
+        window_backend,
         lua,
         code: LUA_CODE.to_string(),
         script_time: std::time::Duration::ZERO,

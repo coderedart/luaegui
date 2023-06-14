@@ -13,5 +13,9 @@ mlua = { version = "0.9.0-beta.2", features = ["luau"] }
 
 [dev-dependencies]
 egui_backend = "0.4"
-egui_window_glfw_passthrough = "0.4"
-egui_render_wgpu = "0.4"
+egui_render_glow = "0.4"
+
+[target.'cfg(target_arch = "wasm32")'.dev-dependencies]
+egui_window_glfw_passthrough = { version = "0.4", default-features = false }
+[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+egui_window_glfw_passthrough = { version = "0.4" }
