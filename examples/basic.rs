@@ -39,6 +39,7 @@ struct AppData<W: WindowBackend, G: GfxBackend> {
     pub script_time: std::time::Duration,
     pub lua: mlua::Lua,
     pub code: String,
+    pub markdown_cache: egui_commonmark::CommonMarkCache,
     pub egui_context: egui::Context,
     pub gfx_backend: G,
     pub window_backend: W,
@@ -48,25 +49,34 @@ impl<W: WindowBackend, G: GfxBackend> UserApp for AppData<W, G> {
     fn gui_run(&mut self) {
         use egui::*;
         let ctx = self.egui_context.clone();
-        Window::new("My Window").min_width(400.0).show(&ctx, |ui| {
-            if ui.button("run").clicked() {
-                if let Err(e) = self.lua.load(&self.code).exec() {
-                    eprintln!("lua load error: {e:?}");
-                }
-            }
-            if !self.lua.globals().contains_key("gui_run").unwrap() {
-                ui.colored_label(Color32::RED, "gui_run fn is not defined");
-            }
-            ui.add(
-                egui::TextEdit::multiline(&mut self.code)
-                    .code_editor()
-                    .desired_width(400.0),
+        Window::new("README").show(&ctx, |ui| {
+            egui_commonmark::CommonMarkViewer::new("readme renderer").show(
+                ui,
+                &mut self.markdown_cache,
+                README,
             );
-            ui.horizontal(|ui| {
-                ui.label("script execution time (micros): ");
-                ui.label(format!("{}", self.script_time.as_micros()));
-            });
         });
+        Window::new("Script Editor")
+            .min_width(400.0)
+            .show(&ctx, |ui| {
+                if ui.button("run").clicked() {
+                    if let Err(e) = self.lua.load(&self.code).exec() {
+                        eprintln!("lua load error: {e:?}");
+                    }
+                }
+                if !self.lua.globals().contains_key("gui_run").unwrap() {
+                    ui.colored_label(Color32::RED, "gui_run fn is not defined");
+                }
+                ui.add(
+                    egui::TextEdit::multiline(&mut self.code)
+                        .code_editor()
+                        .desired_width(400.0),
+                );
+                ui.horizontal(|ui| {
+                    ui.label("script execution time (micros): ");
+                    ui.label(format!("{}", self.script_time.as_micros()));
+                });
+            });
         let start = std::time::Instant::now();
         if let Ok(f) = self.lua.globals().get::<_, Function>("gui_run") {
             let c = self.lua.create_any_userdata(ctx).unwrap();
@@ -109,6 +119,9 @@ fn fake_main() {
         lua,
         code: LUA_CODE.to_string(),
         script_time: std::time::Duration::ZERO,
+        markdown_cache: Default::default(),
     };
     GlfwBackend::run_event_loop(app);
 }
+
+const README: &str = include_str!("../README.md");

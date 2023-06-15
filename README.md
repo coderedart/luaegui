@@ -1,8 +1,17 @@
 # luaegui
 egui bindings for mlua. 
 
-This allows you to call egui functions inside Luau using mlua. This allows a live scripting environment to experiment with egui, as well as allow plugins/addons of your application to have their own UI when they need it.
-
 Just look at the example for basic usage. You can play with the web version live at https://coderedart.github.io/luaegui/
 
-The API itself is still very much in flux as i am trying to figure out the most natural way to use egui from lua. And that is why there is no release yet. Consider this to be very much in alpha stage. If you have any suggestions, create a new issue :)
+There should be a window called `Script Editor` where you can edit the lua code live within egui.
+After editing the code, just click the `run` button on top to execute that code in the lua vm.
+If there was any error, it will be printed to stdout/console(on web). 
+Below the code editor, you can see how long the `gui_run` fn takes every frame. 
+### gui_run
+Every frame, the example will try to call the `gui_run` fn (if it exists) and gives it egui context as the argument.
+If the fn fails for some reason, the error will be printed to stdout/console. 
+
+### egui
+We already provide a global table called `egui` which contains most constants + types + functions to be used by lua scripts.
+for example, you can create a `Window` using `local window = egui.window.new("my window title");`
+
