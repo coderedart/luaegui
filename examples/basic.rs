@@ -20,7 +20,17 @@ function show_fn(ui)
     end
 end
 function gui_run(ctx)
-    new_window = egui.window.new("my lua window");
+    local top_panel = egui.top_bottom_panel.top("top panel");
+    top_panel:show(ctx, 
+        function (ui) 
+            ui:menu_button("my menu",
+                function (ui) 
+                    ui:label("empty :(");
+                end
+            );
+        end
+    );
+    local new_window = egui.window.new("my lua window");
     new_window:show(ctx, show_fn);
 end
 "#;

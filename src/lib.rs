@@ -1,9 +1,9 @@
 use egui::{
     epaint::Shadow,
     style::{Spacing, WidgetVisuals},
-    Align, Align2, Area, Color32, Context, Direction, Frame, Id, LayerId, Layout, Margin, Order,
-    PointerButton, Pos2, Rect, RichText, Rounding, Sense, Stroke, Style, TextStyle, TextureHandle,
-    Ui, Vec2, WidgetText, Window,
+    Align, Align2, Area, CentralPanel, Color32, Context, Direction, Frame, Id, LayerId, Layout,
+    Margin, Order, PointerButton, Pos2, Rect, RichText, Rounding, Sense, SidePanel, Stroke, Style,
+    TextStyle, TextureHandle, TopBottomPanel, Ui, Vec2, WidgetText, Window,
 };
 use mlua::{
     AnyUserData, Function, Lua, MultiValue, Result, Table, UserDataFields, UserDataMethods,
@@ -48,7 +48,9 @@ pub fn register_egui_bindings(lua: &Lua) -> mlua::Result<()> {
     add_ui(lua, egui_table)?;
     add_widget_visuals(lua, egui_table)?;
     add_window(lua, egui_table)?;
-
+    add_central_panel(lua, egui_table)?;
+    add_side_panel(lua, egui_table)?;
+    add_top_bottom_panel(lua, egui_table)?;
     egui_table.set_readonly(true);
     lua.globals().set("egui", et)?;
     Ok(())
@@ -852,6 +854,29 @@ fn add_ui(lua: &Lua, _egui_table: &Table) -> mlua::Result<()> {
                     })
                 });
                 ir
+            },
+        );
+        reg.add_method_mut(
+            "menu_button",
+            |lua, this, (title, add_contents): (Value, Function)| {
+                let ir = this.menu_button(WidgetText::from_lua(title)?, |ui| {
+                    lua.scope(|scope| {
+                        let ui = scope.create_any_userdata_ref_mut(ui)?;
+                        let result: Result<MultiValue> = add_contents.call(ui);
+                        result
+                    })
+                });
+
+                let mut result = MultiValue::new();
+                let response = lua.create_any_userdata(ir.response)?;
+                result.push_front(Value::UserData(response));
+                if let Some(inner) = ir.inner {
+                    let inner = inner?;
+                    for v in inner {
+                        result.push_front(v);
+                    }
+                }
+                Ok(result)
             },
         );
         reg.add_method_mut(
@@ -1957,6 +1982,22 @@ fn add_window(lua: &Lua, egui_table: &Table) -> Result<()> {
 
             Ok(())
         });
+        window.add_method_mut("auto_sized", |_, this, _: ()| {
+            *this = Some(
+                this.take()
+                    .ok_or_else(|| mlua::Error::RuntimeError("window is null".to_owned()))?
+                    .auto_sized(),
+            );
+            Ok(())
+        });
+        window.add_method_mut("collapsible", |_, this, constrain: bool| {
+            *this = Some(
+                this.take()
+                    .ok_or_else(|| mlua::Error::RuntimeError("window is null".to_owned()))?
+                    .collapsible(constrain),
+            );
+            Ok(())
+        });
         window.add_method_mut("constrain", |_, this, constrain: bool| {
             *this = Some(
                 this.take()
@@ -1973,6 +2014,22 @@ fn add_window(lua: &Lua, egui_table: &Table) -> Result<()> {
             );
             Ok(())
         });
+        window.add_method_mut("default_height", |_, this, default_width: f32| {
+            *this = Some(
+                this.take()
+                    .ok_or_else(|| mlua::Error::RuntimeError("window is null".to_owned()))?
+                    .default_height(default_width),
+            );
+            Ok(())
+        });
+        window.add_method_mut("default_open", |_, this, constrain: bool| {
+            *this = Some(
+                this.take()
+                    .ok_or_else(|| mlua::Error::RuntimeError("window is null".to_owned()))?
+                    .default_open(constrain),
+            );
+            Ok(())
+        });
         window.add_method_mut("default_pos", |_, this, default_pos: Value| {
             *this = Some(
                 this.take()
@@ -1981,19 +2038,27 @@ fn add_window(lua: &Lua, egui_table: &Table) -> Result<()> {
             );
             Ok(())
         });
+        window.add_method_mut("default_rect", |_, this, default_pos: Value| {
+            *this = Some(
+                this.take()
+                    .ok_or_else(|| mlua::Error::RuntimeError("window is null".to_owned()))?
+                    .default_rect(Rect::from_lua(default_pos)?),
+            );
+            Ok(())
+        });
+        window.add_method_mut("default_size", |_, this, default_pos: Value| {
+            *this = Some(
+                this.take()
+                    .ok_or_else(|| mlua::Error::RuntimeError("window is null".to_owned()))?
+                    .default_size(Vec2::from_lua(default_pos)?),
+            );
+            Ok(())
+        });
         window.add_method_mut("default_width", |_, this, default_width: f32| {
             *this = Some(
                 this.take()
                     .ok_or_else(|| mlua::Error::RuntimeError("window is null".to_owned()))?
                     .default_width(default_width),
-            );
-            Ok(())
-        });
-        window.add_method_mut("min_width", |_, this, width: f32| {
-            *this = Some(
-                this.take()
-                    .ok_or_else(|| mlua::Error::RuntimeError("window is null".to_owned()))?
-                    .min_width(width),
             );
             Ok(())
         });
@@ -2013,11 +2078,51 @@ fn add_window(lua: &Lua, egui_table: &Table) -> Result<()> {
             );
             Ok(())
         });
-        window.add_method_mut("movable", |_, this, movable: bool| {
+        window.add_method_mut("fixed_pos", |_, this, default_pos: Value| {
             *this = Some(
                 this.take()
                     .ok_or_else(|| mlua::Error::RuntimeError("window is null".to_owned()))?
-                    .movable(movable),
+                    .fixed_pos(Pos2::from_lua(default_pos)?),
+            );
+            Ok(())
+        });
+        window.add_method_mut("fixed_rect", |_, this, default_pos: Value| {
+            *this = Some(
+                this.take()
+                    .ok_or_else(|| mlua::Error::RuntimeError("window is null".to_owned()))?
+                    .fixed_rect(Rect::from_lua(default_pos)?),
+            );
+            Ok(())
+        });
+        window.add_method_mut("fixed_size", |_, this, default_pos: Value| {
+            *this = Some(
+                this.take()
+                    .ok_or_else(|| mlua::Error::RuntimeError("window is null".to_owned()))?
+                    .fixed_size(Vec2::from_lua(default_pos)?),
+            );
+            Ok(())
+        });
+        window.add_method_mut("frame", |_, this, frame: UserDataRef<Frame>| {
+            *this = Some(
+                this.take()
+                    .ok_or_else(|| mlua::Error::RuntimeError("window is null".to_owned()))?
+                    .frame(frame.clone()),
+            );
+            Ok(())
+        });
+        window.add_method_mut("hscroll", |_, this, enabled: bool| {
+            *this = Some(
+                this.take()
+                    .ok_or_else(|| mlua::Error::RuntimeError("window is null".to_owned()))?
+                    .hscroll(enabled),
+            );
+            Ok(())
+        });
+        window.add_method_mut("id", |_, this, id: UserDataRef<Id>| {
+            *this = Some(
+                this.take()
+                    .ok_or_else(|| mlua::Error::RuntimeError("window is null".to_owned()))?
+                    .id(*id),
             );
             Ok(())
         });
@@ -2029,19 +2134,52 @@ fn add_window(lua: &Lua, egui_table: &Table) -> Result<()> {
             );
             Ok(())
         });
-        window.add_method_mut("fixed_pos", |_, this, value: Value| {
+        window.add_method_mut("min_height", |_, this, width: f32| {
             *this = Some(
                 this.take()
                     .ok_or_else(|| mlua::Error::RuntimeError("window is null".to_owned()))?
-                    .fixed_pos(Pos2::from_lua(value)?),
+                    .min_height(width),
             );
             Ok(())
         });
-        window.add_method_mut("id", |_, this, id: UserDataRef<Id>| {
+        window.add_method_mut("min_width", |_, this, width: f32| {
             *this = Some(
                 this.take()
                     .ok_or_else(|| mlua::Error::RuntimeError("window is null".to_owned()))?
-                    .id(*id),
+                    .min_width(width),
+            );
+            Ok(())
+        });
+        window.add_method_mut("movable", |_, this, movable: bool| {
+            *this = Some(
+                this.take()
+                    .ok_or_else(|| mlua::Error::RuntimeError("window is null".to_owned()))?
+                    .movable(movable),
+            );
+            Ok(())
+        });
+        window.add_method_mut("pivot", |_, this, align: Value| {
+            *this = Some(
+                this.take()
+                    .ok_or_else(|| mlua::Error::RuntimeError("window is null".to_owned()))?
+                    .pivot(Align2::from_lua(align)?),
+            );
+            Ok(())
+        });
+
+        window.add_method_mut("resizeable", |_, this, movable: bool| {
+            *this = Some(
+                this.take()
+                    .ok_or_else(|| mlua::Error::RuntimeError("window is null".to_owned()))?
+                    .resizable(movable),
+            );
+            Ok(())
+        });
+        window.add_method_mut("scroll2", |_, this, (hscroll, vscroll): (bool, bool)| {
+            *this = Some(
+                this.take()
+                    .ok_or_else(|| mlua::Error::RuntimeError("window is null".to_owned()))?
+                    .scroll2([hscroll, vscroll]),
             );
             Ok(())
         });
@@ -2083,6 +2221,22 @@ fn add_window(lua: &Lua, egui_table: &Table) -> Result<()> {
                 }
                 Ok(result)
             });
+        window.add_method_mut("titlebar", |_, this, movable: bool| {
+                *this = Some(
+                    this.take()
+                        .ok_or_else(|| mlua::Error::RuntimeError("window is null".to_owned()))?
+                        .title_bar(movable),
+                );
+                Ok(())
+            });
+        window.add_method_mut("vscroll", |_, this, movable: bool| {
+                *this = Some(
+                    this.take()
+                        .ok_or_else(|| mlua::Error::RuntimeError("window is null".to_owned()))?
+                        .vscroll(movable),
+                );
+                Ok(())
+            });
 
     })?;
     let window = lua.create_table()?;
@@ -2094,5 +2248,374 @@ fn add_window(lua: &Lua, egui_table: &Table) -> Result<()> {
         })?,
     )?;
     egui_table.set("window", window)?;
+    Ok(())
+}
+
+fn add_central_panel(lua: &Lua, egui_table: &Table) -> Result<()> {
+    lua.register_userdata_type(
+        |central_panel: &mut UserDataRegistrar<Option<CentralPanel>>| {
+            central_panel.add_method_mut("frame", |_, this, frame: UserDataRef<Frame>| {
+                *this = Some(
+                    this.take()
+                        .ok_or_else(|| {
+                            mlua::Error::RuntimeError("central paenl is null".to_owned())
+                        })?
+                        .frame(*frame),
+                );
+                Ok(())
+            });
+            central_panel.add_method_mut(
+                "show",
+                |lua, this, (ctx, add_contents): (UserDataRef<Context>, Function)| {
+                    let ctx = ctx.clone();
+                    let central_panel = this.take().ok_or_else(|| {
+                        mlua::Error::RuntimeError("central panel is null".to_owned())
+                    })?;
+
+                    let ir = central_panel.show(&ctx, |ui| {
+                        lua.scope(|scope| {
+                            let ui = scope.create_any_userdata_ref_mut(ui)?;
+                            let result: Result<MultiValue> = add_contents.call(ui);
+                            result
+                        })
+                    });
+                    let mut result = MultiValue::new();
+                    let response = lua.create_any_userdata(ir.response)?;
+                    result.push_front(Value::UserData(response));
+                    let inner = ir.inner?;
+                    for v in inner {
+                        result.push_front(v);
+                    }
+
+                    Ok(result)
+                },
+            );
+            central_panel.add_method_mut(
+                "show_inside",
+                |lua, this, (mut ui, add_contents): (UserDataRefMut<Ui>, Function)| {
+                    let central_panel = this.take().ok_or_else(|| {
+                        mlua::Error::RuntimeError("central panel is null".to_owned())
+                    })?;
+
+                    let ir = central_panel.show_inside(&mut ui, |ui| {
+                        lua.scope(|scope| {
+                            let ui = scope.create_any_userdata_ref_mut(ui)?;
+                            let result: Result<MultiValue> = add_contents.call(ui);
+                            result
+                        })
+                    });
+                    let mut result = MultiValue::new();
+                    let response = lua.create_any_userdata(ir.response)?;
+                    result.push_front(Value::UserData(response));
+                    let inner = ir.inner?;
+                    for v in inner {
+                        result.push_front(v);
+                    }
+
+                    Ok(result)
+                },
+            );
+        },
+    )?;
+    let central_panel = lua.create_table()?;
+    central_panel.set(
+        "default",
+        lua.create_function(|lua, _: ()| lua.create_any_userdata(Some(CentralPanel::default())))?,
+    )?;
+    egui_table.set("central_panel", central_panel)?;
+    Ok(())
+}
+fn add_side_panel(lua: &Lua, egui_table: &Table) -> Result<()> {
+    lua.register_userdata_type(|side_panel: &mut UserDataRegistrar<Option<SidePanel>>| {
+        side_panel.add_method_mut("default_width", |_, this, default_width: f32| {
+            *this = Some(
+                this.take()
+                    .ok_or_else(|| mlua::Error::RuntimeError("window is null".to_owned()))?
+                    .default_width(default_width),
+            );
+            Ok(())
+        });
+        side_panel.add_method_mut("exact_width", |_, this, default_width: f32| {
+            *this = Some(
+                this.take()
+                    .ok_or_else(|| mlua::Error::RuntimeError("window is null".to_owned()))?
+                    .exact_width(default_width),
+            );
+            Ok(())
+        });
+        side_panel.add_method_mut("frame", |_, this, frame: UserDataRef<Frame>| {
+            *this = Some(
+                this.take()
+                    .ok_or_else(|| mlua::Error::RuntimeError("window is null".to_owned()))?
+                    .frame(frame.clone()),
+            );
+            Ok(())
+        });
+        side_panel.add_method_mut("max_width", |_, this, width: f32| {
+            *this = Some(
+                this.take()
+                    .ok_or_else(|| mlua::Error::RuntimeError("window is null".to_owned()))?
+                    .max_width(width),
+            );
+            Ok(())
+        });
+        side_panel.add_method_mut("min_width", |_, this, width: f32| {
+            *this = Some(
+                this.take()
+                    .ok_or_else(|| mlua::Error::RuntimeError("window is null".to_owned()))?
+                    .min_width(width),
+            );
+            Ok(())
+        });
+
+        side_panel.add_method_mut("resizeable", |_, this, movable: bool| {
+            *this = Some(
+                this.take()
+                    .ok_or_else(|| mlua::Error::RuntimeError("window is null".to_owned()))?
+                    .resizable(movable),
+            );
+            Ok(())
+        });
+        side_panel.add_method_mut(
+            "show",
+            |lua, this, (ctx, add_contents): (UserDataRef<Context>, Function)| {
+                let ctx = ctx.clone();
+                let side_panel = this
+                    .take()
+                    .ok_or_else(|| mlua::Error::RuntimeError("central panel is null".to_owned()))?;
+
+                let ir = side_panel.show(&ctx, |ui| {
+                    lua.scope(|scope| {
+                        let ui = scope.create_any_userdata_ref_mut(ui)?;
+                        let result: Result<MultiValue> = add_contents.call(ui);
+                        result
+                    })
+                });
+                let mut result = MultiValue::new();
+                let response = lua.create_any_userdata(ir.response)?;
+                result.push_front(Value::UserData(response));
+                let inner = ir.inner?;
+                for v in inner {
+                    result.push_front(v);
+                }
+
+                Ok(result)
+            },
+        );
+        side_panel.add_method_mut(
+            "show_inside",
+            |lua, this, (mut ui, add_contents): (UserDataRefMut<Ui>, Function)| {
+                let side_panel = this
+                    .take()
+                    .ok_or_else(|| mlua::Error::RuntimeError("central panel is null".to_owned()))?;
+
+                let ir = side_panel.show_inside(&mut ui, |ui| {
+                    lua.scope(|scope| {
+                        let ui = scope.create_any_userdata_ref_mut(ui)?;
+                        let result: Result<MultiValue> = add_contents.call(ui);
+                        result
+                    })
+                });
+                let mut result = MultiValue::new();
+                let response = lua.create_any_userdata(ir.response)?;
+                result.push_front(Value::UserData(response));
+                let inner = ir.inner?;
+                for v in inner {
+                    result.push_front(v);
+                }
+
+                Ok(result)
+            },
+        );
+
+        side_panel.add_method_mut("show_separator_line", |_, this, movable: bool| {
+            *this = Some(
+                this.take()
+                    .ok_or_else(|| mlua::Error::RuntimeError("window is null".to_owned()))?
+                    .show_separator_line(movable),
+            );
+            Ok(())
+        });
+
+        side_panel.add_method_mut("width_range", |_, this, (start, end): (f32, f32)| {
+            *this = Some(
+                this.take()
+                    .ok_or_else(|| mlua::Error::RuntimeError("window is null".to_owned()))?
+                    .width_range(start..=end),
+            );
+            Ok(())
+        });
+    })?;
+    let side_panel = lua.create_table()?;
+    side_panel.set(
+        "left",
+        lua.create_function(|lua, title: Value| {
+            let w = SidePanel::left(Id::from_lua(title)?);
+            lua.create_any_userdata(Some(w))
+        })?,
+    )?;
+    side_panel.set(
+        "right",
+        lua.create_function(|lua, title: Value| {
+            let w = SidePanel::right(Id::from_lua(title)?);
+            lua.create_any_userdata(Some(w))
+        })?,
+    )?;
+    egui_table.set("side_panel", side_panel)?;
+    Ok(())
+}
+fn add_top_bottom_panel(lua: &Lua, egui_table: &Table) -> Result<()> {
+    lua.register_userdata_type(
+        |top_bottom_panel: &mut UserDataRegistrar<Option<TopBottomPanel>>| {
+            top_bottom_panel.add_method_mut("default_height", |_, this, default_width: f32| {
+                *this = Some(
+                    this.take()
+                        .ok_or_else(|| {
+                            mlua::Error::RuntimeError("top_bottom_panel is null".to_owned())
+                        })?
+                        .default_height(default_width),
+                );
+                Ok(())
+            });
+            top_bottom_panel.add_method_mut("exact_height", |_, this, default_width: f32| {
+                *this = Some(
+                    this.take()
+                        .ok_or_else(|| {
+                            mlua::Error::RuntimeError("top_bottom_panel is null".to_owned())
+                        })?
+                        .exact_height(default_width),
+                );
+                Ok(())
+            });
+            top_bottom_panel.add_method_mut("frame", |_, this, frame: UserDataRef<Frame>| {
+                *this = Some(
+                    this.take()
+                        .ok_or_else(|| {
+                            mlua::Error::RuntimeError("top_bottom_panel is null".to_owned())
+                        })?
+                        .frame(frame.clone()),
+                );
+                Ok(())
+            });
+
+            top_bottom_panel.add_method_mut("height_range", |_, this, (start, end): (f32, f32)| {
+                *this = Some(
+                    this.take()
+                        .ok_or_else(|| {
+                            mlua::Error::RuntimeError("top_bottom_panel is null".to_owned())
+                        })?
+                        .height_range(start..=end),
+                );
+                Ok(())
+            });
+            top_bottom_panel.add_method_mut("max_height", |_, this, width: f32| {
+                *this = Some(
+                    this.take()
+                        .ok_or_else(|| {
+                            mlua::Error::RuntimeError("top_bottom_panel is null".to_owned())
+                        })?
+                        .max_height(width),
+                );
+                Ok(())
+            });
+            top_bottom_panel.add_method_mut("min_height", |_, this, width: f32| {
+                *this = Some(
+                    this.take()
+                        .ok_or_else(|| {
+                            mlua::Error::RuntimeError("top_bottom_panel is null".to_owned())
+                        })?
+                        .min_height(width),
+                );
+                Ok(())
+            });
+
+            top_bottom_panel.add_method_mut("resizeable", |_, this, movable: bool| {
+                *this = Some(
+                    this.take()
+                        .ok_or_else(|| {
+                            mlua::Error::RuntimeError("top_bottom_panel is null".to_owned())
+                        })?
+                        .resizable(movable),
+                );
+                Ok(())
+            });
+            top_bottom_panel.add_method_mut(
+                "show",
+                |lua, this, (ctx, add_contents): (UserDataRef<Context>, Function)| {
+                    let ctx = ctx.clone();
+                    let side_panel = this.take().ok_or_else(|| {
+                        mlua::Error::RuntimeError("top_bottom_panel is null".to_owned())
+                    })?;
+
+                    let ir = side_panel.show(&ctx, |ui| {
+                        lua.scope(|scope| {
+                            let ui = scope.create_any_userdata_ref_mut(ui)?;
+                            let result: Result<MultiValue> = add_contents.call(ui);
+                            result
+                        })
+                    });
+                    let mut result = MultiValue::new();
+                    let response = lua.create_any_userdata(ir.response)?;
+                    result.push_front(Value::UserData(response));
+                    let inner = ir.inner?;
+                    for v in inner {
+                        result.push_front(v);
+                    }
+
+                    Ok(result)
+                },
+            );
+            top_bottom_panel.add_method_mut(
+                "show_inside",
+                |lua, this, (mut ui, add_contents): (UserDataRefMut<Ui>, Function)| {
+                    let side_panel = this.take().ok_or_else(|| {
+                        mlua::Error::RuntimeError("top_bottom_panel is null".to_owned())
+                    })?;
+
+                    let ir = side_panel.show_inside(&mut ui, |ui| {
+                        lua.scope(|scope| {
+                            let ui = scope.create_any_userdata_ref_mut(ui)?;
+                            let result: Result<MultiValue> = add_contents.call(ui);
+                            result
+                        })
+                    });
+                    let mut result = MultiValue::new();
+                    let response = lua.create_any_userdata(ir.response)?;
+                    result.push_front(Value::UserData(response));
+                    let inner = ir.inner?;
+                    for v in inner {
+                        result.push_front(v);
+                    }
+
+                    Ok(result)
+                },
+            );
+
+            top_bottom_panel.add_method_mut("show_separator_line", |_, this, movable: bool| {
+                *this = Some(
+                    this.take()
+                        .ok_or_else(|| mlua::Error::RuntimeError("window is null".to_owned()))?
+                        .show_separator_line(movable),
+                );
+                Ok(())
+            });
+        },
+    )?;
+    let top_bottom_panel = lua.create_table()?;
+    top_bottom_panel.set(
+        "top",
+        lua.create_function(|lua, title: Value| {
+            let w = TopBottomPanel::top(Id::from_lua(title)?);
+            lua.create_any_userdata(Some(w))
+        })?,
+    )?;
+    top_bottom_panel.set(
+        "bottom",
+        lua.create_function(|lua, title: Value| {
+            let w = TopBottomPanel::bottom(Id::from_lua(title)?);
+            lua.create_any_userdata(Some(w))
+        })?,
+    )?;
+    egui_table.set("top_bottom_panel", top_bottom_panel)?;
     Ok(())
 }
