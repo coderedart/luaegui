@@ -7,13 +7,86 @@ fn main() {
     fake_main();
 }
 
+const LUA_CODE: &str = r#"
+my_data = {
+    text = "my text"
+}
+function show_fn(ui)
+    ui:label(my_data.text);
+    ui:text_edit_singleline(my_data);
+    if ui:button("cute button"):clicked() then
+        print("cute button pressed. printing my_data.text");
+        print(my_data.text);
+    end
+end
+function gui_run(ctx)
+    new_window = egui.window.new("my lua window");
+    new_window:show(ctx, show_fn);
+end
+"#;
+
+struct AppData<W: WindowBackend, G: GfxBackend> {
+    pub script_time: std::time::Duration,
+    pub lua: mlua::Lua,
+    pub code: String,
+    pub egui_context: egui::Context,
+    pub gfx_backend: G,
+    pub window_backend: W,
+}
+
+impl<W: WindowBackend, G: GfxBackend> UserApp for AppData<W, G> {
+    fn gui_run(&mut self) {
+        use egui::*;
+        let ctx = self.egui_context.clone();
+        Window::new("My Window").min_width(400.0).show(&ctx, |ui| {
+            if ui.button("run").clicked() {
+                if let Err(e) = self.lua.load(&self.code).exec() {
+                    eprintln!("lua load error: {e:?}");
+                }
+            }
+            if !self.lua.globals().contains_key("gui_run").unwrap() {
+                ui.colored_label(Color32::RED, "gui_run fn is not defined");
+            }
+            ui.add(
+                egui::TextEdit::multiline(&mut self.code)
+                    .code_editor()
+                    .desired_width(400.0),
+            );
+            ui.horizontal(|ui| {
+                ui.label("script execution time (micros): ");
+                ui.label(format!("{}", self.script_time.as_micros()));
+            });
+        });
+        let start = std::time::Instant::now();
+        if let Ok(f) = self.lua.globals().get::<_, Function>("gui_run") {
+            let c = self.lua.create_any_userdata(ctx).unwrap();
+            let _: () = f.call(c).unwrap();
+        }
+        self.script_time = start.elapsed();
+    }
+    type UserGfxBackend = G;
+    type UserWindowBackend = W;
+    fn get_all(
+        &mut self,
+    ) -> (
+        &mut Self::UserWindowBackend,
+        &mut Self::UserGfxBackend,
+        &egui::Context,
+    ) {
+        (
+            &mut self.window_backend,
+            &mut self.gfx_backend,
+            &mut self.egui_context,
+        )
+    }
+}
+
 fn fake_main() {
     let mut window_backend = GlfwBackend::new(
         Default::default(),
         BackendConfig {
             is_opengl: true,
-            opengl_config: Default::default(),
-            transparent: None,
+            ..Default::default()
         },
     );
     let gfx_backend = GlowBackend::new(&mut window_backend, Default::default());
@@ -29,74 +102,3 @@ fn fake_main() {
     };
     GlfwBackend::run_event_loop(app);
 }
-
-struct AppData<W: WindowBackend, G: GfxBackend> {
-    pub script_time: std::time::Duration,
-    pub lua: mlua::Lua,
-    pub code: String,
-    pub egui_context: egui::Context,
-    pub gfx_backend: G,
-    pub window_backend: W,
-}
-
-impl<W: WindowBackend, G: GfxBackend> UserApp for AppData<W, G> {
-    type UserGfxBackend = G;
-
-    type UserWindowBackend = W;
-
-    fn get_all(
-        &mut self,
-    ) -> (
-        &mut Self::UserWindowBackend,
-        &mut Self::UserGfxBackend,
-        &egui::Context,
-    ) {
-        (
-            &mut self.window_backend,
-            &mut self.gfx_backend,
-            &mut self.egui_context,
-        )
-    }
-
-    fn gui_run(&mut self) {
-        use egui::*;
-        let ctx = self.egui_context.clone();
-        Window::new("My Window").show(&ctx, |ui| {
-            if ui.button("run").clicked() {
-                if let Err(e) = self.lua.load(&self.code).exec() {
-                    eprintln!("lua load error: {e:?}");
-                }
-            }
-            if !self.lua.globals().contains_key("gui_run").unwrap() {
-                ui.colored_label(Color32::RED, "gui_run fn is not defined");
-            }
-            ui.code_editor(&mut self.code);
-            ui.horizontal(|ui| {
-                ui.label("script execution time (micros): ");
-                ui.label(format!("{}", self.script_time.as_micros()));
-            });
-        });
-        let start = std::time::Instant::now();
-        if let Ok(f) = self.lua.globals().get::<_, Function>("gui_run") {
-            let c = self.lua.create_any_userdata(ctx).unwrap();
-            let _: () = f.call(c).unwrap();
-        }
-        self.script_time = start.elapsed();
-    }
-}
-
-const LUA_CODE: &str = r#"
-function show_fn(ui)
-    ui:label("hello");
-    if ui:
-       button("cute button"):
-       clicked() then
-
-        print("cute button tapped");
-    end
-end
-function gui_run(ctx)
-    new_window = egui.window.new("my lua window");
-    new_window:show(ctx, show_fn);
-end
-"#;

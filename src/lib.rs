@@ -64,43 +64,6 @@ fn add_context(lua: &Lua, _: &Table) -> mlua::Result<()> {
             this.request_repaint_after(std::time::Duration::from_secs_f64(duration));
             Ok(())
         });
-        // reg.add_method(
-        //     "new_window",
-        //     |lua, this, (window_options, add_contents): (Table, Function)| {
-        //         let title: Value = window_options.get("title")?;
-        //         let mut open = true;
-        //         let mut window_option_open_exists = false;
-        //         let mut window = egui::Window::new(WidgetText::from_lua(title)?);
-        //         if let Ok(o) = window_options.get("open") {
-        //             open = o;
-        //             window_option_open_exists = true;
-        //             window = window.open(&mut open)
-        //         }
-
-        //         let ir = window.show(this, |ui| {
-        //             lua.scope(|scope| {
-        //                 let ui = scope.create_any_userdata_ref_mut(ui)?;
-        //                 let result: Result<MultiValue> = add_contents.call(ui);
-        //                 result
-        //             })
-        //         });
-        //         if window_option_open_exists {
-        //             window_options.set("open", open)?;
-        //         }
-        //         let mut result = MultiValue::new();
-        //         if let Some(ir) = ir {
-        //             let response = lua.create_any_userdata(ir.response)?;
-        //             result.push_front(Value::UserData(response));
-        //             if let Some(inner) = ir.inner {
-        //                 let inner = inner?;
-        //                 for v in inner {
-        //                     result.push_front(v);
-        //                 }
-        //             }
-        //         }
-        //         Ok(result)
-        //     },
-        // );
     })?;
     Ok(())
 }
@@ -2018,6 +1981,22 @@ fn add_window(lua: &Lua, egui_table: &Table) -> Result<()> {
             );
             Ok(())
         });
+        window.add_method_mut("default_width", |_, this, default_width: f32| {
+            *this = Some(
+                this.take()
+                    .ok_or_else(|| mlua::Error::RuntimeError("window is null".to_owned()))?
+                    .default_width(default_width),
+            );
+            Ok(())
+        });
+        window.add_method_mut("min_width", |_, this, width: f32| {
+            *this = Some(
+                this.take()
+                    .ok_or_else(|| mlua::Error::RuntimeError("window is null".to_owned()))?
+                    .min_width(width),
+            );
+            Ok(())
+        });
         window.add_method_mut("drag_bounds", |_, this, bounds: Value| {
             *this = Some(
                 this.take()
@@ -2068,22 +2047,43 @@ fn add_window(lua: &Lua, egui_table: &Table) -> Result<()> {
         });
         window.add_method_mut(
             "show",
-            |lua, this, (ctx, add_contents): (UserDataRef<Context>, Function)| {
+            |lua, this, (ctx, add_contents, open_table): (UserDataRef<Context>, Function, Option<Table>)| {
                 let ctx = ctx.clone();
+                let mut window = this.take()
+                    .ok_or_else(|| mlua::Error::RuntimeError("window is null".to_owned()))?;
+                let mut open = true;
+                let mut window_option_open_exists = false;
+                if let Some(open_table) = open_table.as_ref() {
+                    if let Ok(o) = open_table.get::<_, bool>("open") {
+                        open = o;
+                        window_option_open_exists = true;
+                        window = window.open(&mut open)
+                    }
+                }
+                let ir = window.show(&ctx, |ui| {
+                    lua.scope(|scope| {
+                        let ui = scope.create_any_userdata_ref_mut(ui)?;
+                        let result: Result<MultiValue> = add_contents.call(ui);
+                        result
+                    })
+                });
+                if window_option_open_exists {
+                    open_table.unwrap().set("open", open)?;
+                }
+                let mut result = MultiValue::new();
+                if let Some(ir) = ir {
+                    let response = lua.create_any_userdata(ir.response)?;
+                    result.push_front(Value::UserData(response));
+                    if let Some(inner) = ir.inner {
+                        let inner = inner?;
+                        for v in inner {
+                            result.push_front(v);
+                        }
+                    }
+                }
+                Ok(result)
+            });
 
-                this.take()
-                    .ok_or_else(|| mlua::Error::RuntimeError("window is null".to_owned()))?
-                    .show(&ctx, |ui| {
-                        lua.scope(|scope| {
-                            let ui = scope.create_any_userdata_ref_mut(ui)?;
-                            let _: () = add_contents.call(ui)?;
-                            Ok(())
-                        })
-                        .unwrap();
-                    });
-                Ok(())
-            },
-        )
     })?;
     let window = lua.create_table()?;
     window.set(
