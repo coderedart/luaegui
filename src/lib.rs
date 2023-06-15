@@ -3,7 +3,7 @@ use egui::{
     style::{Spacing, WidgetVisuals},
     Align, Align2, Area, Color32, Context, Direction, Frame, Id, LayerId, Layout, Margin, Order,
     PointerButton, Pos2, Rect, RichText, Rounding, Sense, Stroke, Style, TextStyle, TextureHandle,
-    Ui, Vec2, WidgetText,
+    Ui, Vec2, WidgetText, Window,
 };
 use mlua::{
     AnyUserData, Function, Lua, MultiValue, Result, Table, UserDataFields, UserDataMethods,
@@ -47,7 +47,7 @@ pub fn register_egui_bindings(lua: &Lua) -> mlua::Result<()> {
     add_style(lua, egui_table)?;
     add_ui(lua, egui_table)?;
     add_widget_visuals(lua, egui_table)?;
-    // add_window(lua, egui_table)?;
+    add_window(lua, egui_table)?;
 
     egui_table.set_readonly(true);
     lua.globals().set("egui", et)?;
@@ -64,43 +64,43 @@ fn add_context(lua: &Lua, _: &Table) -> mlua::Result<()> {
             this.request_repaint_after(std::time::Duration::from_secs_f64(duration));
             Ok(())
         });
-        reg.add_method(
-            "new_window",
-            |lua, this, (window_options, add_contents): (Table, Function)| {
-                let title: Value = window_options.get("title")?;
-                let mut open = true;
-                let mut window_option_open_exists = false;
-                let mut window = egui::Window::new(WidgetText::from_lua(title)?);
-                if let Ok(o) = window_options.get("open") {
-                    open = o;
-                    window_option_open_exists = true;
-                    window = window.open(&mut open)
-                }
+        // reg.add_method(
+        //     "new_window",
+        //     |lua, this, (window_options, add_contents): (Table, Function)| {
+        //         let title: Value = window_options.get("title")?;
+        //         let mut open = true;
+        //         let mut window_option_open_exists = false;
+        //         let mut window = egui::Window::new(WidgetText::from_lua(title)?);
+        //         if let Ok(o) = window_options.get("open") {
+        //             open = o;
+        //             window_option_open_exists = true;
+        //             window = window.open(&mut open)
+        //         }
 
-                let ir = window.show(this, |ui| {
-                    lua.scope(|scope| {
-                        let ui = scope.create_any_userdata_ref_mut(ui)?;
-                        let result: Result<MultiValue> = add_contents.call(ui);
-                        result
-                    })
-                });
-                if window_option_open_exists {
-                    window_options.set("open", open)?;
-                }
-                let mut result = MultiValue::new();
-                if let Some(ir) = ir {
-                    let response = lua.create_any_userdata(ir.response)?;
-                    result.push_front(Value::UserData(response));
-                    if let Some(inner) = ir.inner {
-                        let inner = inner?;
-                        for v in inner {
-                            result.push_front(v);
-                        }
-                    }
-                }
-                Ok(result)
-            },
-        );
+        //         let ir = window.show(this, |ui| {
+        //             lua.scope(|scope| {
+        //                 let ui = scope.create_any_userdata_ref_mut(ui)?;
+        //                 let result: Result<MultiValue> = add_contents.call(ui);
+        //                 result
+        //             })
+        //         });
+        //         if window_option_open_exists {
+        //             window_options.set("open", open)?;
+        //         }
+        //         let mut result = MultiValue::new();
+        //         if let Some(ir) = ir {
+        //             let response = lua.create_any_userdata(ir.response)?;
+        //             result.push_front(Value::UserData(response));
+        //             if let Some(inner) = ir.inner {
+        //                 let inner = inner?;
+        //                 for v in inner {
+        //                     result.push_front(v);
+        //                 }
+        //             }
+        //         }
+        //         Ok(result)
+        //     },
+        // );
     })?;
     Ok(())
 }
@@ -1983,77 +1983,116 @@ fn add_area(lua: &Lua, egui_table: &Table) -> Result<()> {
     Ok(())
 }
 
-// fn add_window(lua: &Lua, egui_table: &Table) -> Result<()> {
-//     lua.register_userdata_type(|window: &mut UserDataRegistrar<Window<'static>>| {
-//         window.add_method_mut("anchor", |_, this, (align, offset): (Value, Value)| {
-//             let w = this.anchor(Align2::from_lua(align)?, Vec2::from_lua(offset)?);
-//             *this = w;
-//             Ok(())
-//         });
-//         window.add_method_mut("constrain", |_, this, constrain: bool| {
-//             *this = this.constrain(constrain);
-//             Ok(())
-//         });
-//         window.add_method_mut("current_pos", |_, this, current_pos: Value| {
-//             *this = this.current_pos(Pos2::from_lua(current_pos)?);
-//             Ok(())
-//         });
-//         window.add_method_mut("default_pos", |_, this, default_pos: Value| {
-//             *this = this.default_pos(Pos2::from_lua(default_pos)?);
-//             Ok(())
-//         });
-//         window.add_method_mut("drag_bounds", |_, this, bounds: Value| {
-//             *this = this.drag_bounds(Rect::from_lua(bounds)?);
-//             Ok(())
-//         });
-//         window.add_method_mut("enabled", |_, this, enabled: bool| {
-//             *this = this.enabled(enabled);
-//             Ok(())
-//         });
-//         window.add_method_mut("movable", |_, this, movable: bool| {
-//             *this = this.movable(movable);
-//             Ok(())
-//         });
-//         window.add_method_mut("interactable", |_, this, interactable: bool| {
-//             *this = this.interactable(interactable);
-//             Ok(())
-//         });
-//         window.add_method_mut("fixed_pos", |_, this, value: Value| {
-//             *this = this.fixed_pos(Pos2::from_lua(value)?);
-//             Ok(())
-//         });
-//         window.add_method_mut("id", |_, this, id: UserDataRef<Id>| {
-//             *this = this.id(*id);
-//             Ok(())
-//         });
-//         window.add_method(
-//             "show",
-//             |lua,
-//              this,
-//              (ctx, add_contents, open_table): (UserDataRef<Context>, Function, Table)| {
-//                 let window = *this;
-//                 let ctx = ctx.clone();
+fn add_window(lua: &Lua, egui_table: &Table) -> Result<()> {
+    lua.register_userdata_type(|window: &mut UserDataRegistrar<Option<Window<'static>>>| {
+        window.add_method_mut("anchor", |_, this, (align, offset): (Value, Value)| {
+            *this = Some(
+                this.take()
+                    .ok_or_else(|| mlua::Error::RuntimeError("window is null".to_owned()))?
+                    .anchor(Align2::from_lua(align)?, Vec2::from_lua(offset)?),
+            );
 
-//                 window.show(&ctx, |ui| {
-//                     lua.scope(|scope| {
-//                         let ui = scope.create_any_userdata_ref_mut(ui)?;
-//                         let _: () = add_contents.call(ui)?;
-//                         Ok(())
-//                     })
-//                     .unwrap();
-//                 });
-//                 Ok(())
-//             },
-//         )
-//     })?;
-//     let window = lua.create_table()?;
-//     window.set(
-//         "new",
-//         lua.create_function(|lua, title: Value| {
-//             let w = Window::<'static>::new(WidgetText::from_lua(title)?);
-//             lua.create_any_userdata(w)
-//         })?,
-//     )?;
-//     egui_table.set("window", window)?;
-//     Ok(())
-// }
+            Ok(())
+        });
+        window.add_method_mut("constrain", |_, this, constrain: bool| {
+            *this = Some(
+                this.take()
+                    .ok_or_else(|| mlua::Error::RuntimeError("window is null".to_owned()))?
+                    .constrain(constrain),
+            );
+            Ok(())
+        });
+        window.add_method_mut("current_pos", |_, this, current_pos: Value| {
+            *this = Some(
+                this.take()
+                    .ok_or_else(|| mlua::Error::RuntimeError("window is null".to_owned()))?
+                    .current_pos(Pos2::from_lua(current_pos)?),
+            );
+            Ok(())
+        });
+        window.add_method_mut("default_pos", |_, this, default_pos: Value| {
+            *this = Some(
+                this.take()
+                    .ok_or_else(|| mlua::Error::RuntimeError("window is null".to_owned()))?
+                    .default_pos(Pos2::from_lua(default_pos)?),
+            );
+            Ok(())
+        });
+        window.add_method_mut("drag_bounds", |_, this, bounds: Value| {
+            *this = Some(
+                this.take()
+                    .ok_or_else(|| mlua::Error::RuntimeError("window is null".to_owned()))?
+                    .drag_bounds(Rect::from_lua(bounds)?),
+            );
+            Ok(())
+        });
+        window.add_method_mut("enabled", |_, this, enabled: bool| {
+            *this = Some(
+                this.take()
+                    .ok_or_else(|| mlua::Error::RuntimeError("window is null".to_owned()))?
+                    .enabled(enabled),
+            );
+            Ok(())
+        });
+        window.add_method_mut("movable", |_, this, movable: bool| {
+            *this = Some(
+                this.take()
+                    .ok_or_else(|| mlua::Error::RuntimeError("window is null".to_owned()))?
+                    .movable(movable),
+            );
+            Ok(())
+        });
+        window.add_method_mut("interactable", |_, this, interactable: bool| {
+            *this = Some(
+                this.take()
+                    .ok_or_else(|| mlua::Error::RuntimeError("window is null".to_owned()))?
+                    .interactable(interactable),
+            );
+            Ok(())
+        });
+        window.add_method_mut("fixed_pos", |_, this, value: Value| {
+            *this = Some(
+                this.take()
+                    .ok_or_else(|| mlua::Error::RuntimeError("window is null".to_owned()))?
+                    .fixed_pos(Pos2::from_lua(value)?),
+            );
+            Ok(())
+        });
+        window.add_method_mut("id", |_, this, id: UserDataRef<Id>| {
+            *this = Some(
+                this.take()
+                    .ok_or_else(|| mlua::Error::RuntimeError("window is null".to_owned()))?
+                    .id(*id),
+            );
+            Ok(())
+        });
+        window.add_method_mut(
+            "show",
+            |lua, this, (ctx, add_contents): (UserDataRef<Context>, Function)| {
+                let ctx = ctx.clone();
+
+                this.take()
+                    .ok_or_else(|| mlua::Error::RuntimeError("window is null".to_owned()))?
+                    .show(&ctx, |ui| {
+                        lua.scope(|scope| {
+                            let ui = scope.create_any_userdata_ref_mut(ui)?;
+                            let _: () = add_contents.call(ui)?;
+                            Ok(())
+                        })
+                        .unwrap();
+                    });
+                Ok(())
+            },
+        )
+    })?;
+    let window = lua.create_table()?;
+    window.set(
+        "new",
+        lua.create_function(|lua, title: Value| {
+            let w = Window::<'static>::new(WidgetText::from_lua(title)?);
+            lua.create_any_userdata(Some(w))
+        })?,
+    )?;
+    egui_table.set("window", window)?;
+    Ok(())
+}

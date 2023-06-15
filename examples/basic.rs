@@ -86,10 +86,6 @@ impl<W: WindowBackend, G: GfxBackend> UserApp for AppData<W, G> {
 }
 
 const LUA_CODE: &str = r#"
-window_options = {
-    title = "My Lua Window",
-    open = true
-}
 function show_fn(ui)
     ui:label("hello");
     if ui:
@@ -100,6 +96,7 @@ function show_fn(ui)
     end
 end
 function gui_run(ctx)
-    ctx:new_window(window_options, show_fn);
+    new_window = egui.window.new("my lua window");
+    new_window:show(ctx, show_fn);
 end
 "#;
