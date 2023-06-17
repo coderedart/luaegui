@@ -879,6 +879,9 @@ fn add_ui(lua: &Lua, _egui_table: &Table) -> mlua::Result<()> {
                 Ok(result)
             },
         );
+        reg.add_method_mut("selectable_label", |lua, ui, (selected, text): (bool, Value)| {
+            lua.create_any_userdata(ui.selectable_label(selected, WidgetText::from_lua(text)?))
+        });
         reg.add_method_mut(
             "set_row_height",
             |_, this, height: f32| {
