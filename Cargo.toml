@@ -9,7 +9,7 @@ edition = "2021"
 
 [dependencies]
 egui = "0.22"
-mlua = { version = "0.9.0-beta.2", features = ["luau"] }
+mlua = { version = "0.9", features = ["luau-vector4"] }
 
 [dev-dependencies]
 egui_backend = "0.4"

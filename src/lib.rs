@@ -7,7 +7,7 @@ use egui::{
 };
 use mlua::{
     AnyUserData, Function, Lua, MultiValue, Result, Table, UserDataFields, UserDataMethods,
-    UserDataRef, UserDataRefMut, UserDataRegistrar, Value,
+    UserDataRef, UserDataRefMut, UserDataRegistry, Value, Vector,
 };
 
 trait LuaHelperTrait: Sized {
@@ -57,7 +57,7 @@ pub fn register_egui_bindings(lua: &Lua) -> mlua::Result<()> {
 }
 
 fn add_context(lua: &Lua, _: &Table) -> mlua::Result<()> {
-    lua.register_userdata_type(|reg: &mut UserDataRegistrar<Context>| {
+    lua.register_userdata_type(|reg: &mut UserDataRegistry<Context>| {
         reg.add_method("request_repaint", |_, this, ()| {
             this.request_repaint();
             Ok(())
@@ -103,7 +103,7 @@ impl LuaHelperTrait for Id {
 
     fn add_to_lua(lua: &Lua, egui_table: &Table) -> Result<()> {
         let id: Table<'_> = lua.create_table()?;
-        lua.register_userdata_type(|reg: &mut UserDataRegistrar<Id>| {
+        lua.register_userdata_type(|reg: &mut UserDataRegistry<Id>| {
             reg.add_method("with", |lua, this, value: Value| {
                 lua.create_any_userdata(match value {
                     Value::Nil => Id::null(),
@@ -131,7 +131,7 @@ impl LuaHelperTrait for Id {
 
 fn add_widget_visuals(lua: &Lua, egui_table: &Table) -> mlua::Result<()> {
     let id = lua.create_table()?;
-    lua.register_userdata_type(|reg: &mut UserDataRegistrar<WidgetVisuals>| {
+    lua.register_userdata_type(|reg: &mut UserDataRegistry<WidgetVisuals>| {
         reg.add_field_method_get("bg_fill", |lua, this| Color32::to_lua(this.bg_fill, lua));
         reg.add_field_method_get("weak_bg_fill", |lua, this| {
             Color32::to_lua(this.weak_bg_fill, lua)
@@ -173,7 +173,7 @@ fn add_widget_visuals(lua: &Lua, egui_table: &Table) -> mlua::Result<()> {
 
 fn add_layout(lua: &Lua, egui_table: &Table) -> mlua::Result<()> {
     let layout = lua.create_table()?;
-    lua.register_userdata_type(|reg: &mut UserDataRegistrar<Layout>| {
+    lua.register_userdata_type(|reg: &mut UserDataRegistry<Layout>| {
         reg.add_field_method_get("main_dir", |lua, this| {
             Direction::to_lua(this.main_dir, lua)
         });
@@ -217,7 +217,7 @@ fn add_layout(lua: &Lua, egui_table: &Table) -> mlua::Result<()> {
     Ok(())
 }
 fn add_spacing(lua: &Lua, _egui_table: &Table) -> mlua::Result<()> {
-    lua.register_userdata_type(|reg: &mut UserDataRegistrar<Spacing>| {
+    lua.register_userdata_type(|reg: &mut UserDataRegistry<Spacing>| {
         reg.add_field_method_get("item_spacing", |lua, this| {
             Vec2::to_lua(this.item_spacing, lua)
         });
@@ -281,7 +281,7 @@ fn add_spacing(lua: &Lua, _egui_table: &Table) -> mlua::Result<()> {
     Ok(())
 }
 fn add_response(lua: &Lua) -> mlua::Result<()> {
-    lua.register_userdata_type(|reg: &mut UserDataRegistrar<egui::Response>| {
+    lua.register_userdata_type(|reg: &mut UserDataRegistry<egui::Response>| {
         reg.add_method("changed", |_, this, ()| Ok(this.changed()));
         reg.add_method("clicked", |_, this, ()| Ok(this.clicked()));
         reg.add_method("clicked_by", |_, this, value: Value| {
@@ -324,7 +324,7 @@ fn add_response(lua: &Lua) -> mlua::Result<()> {
 }
 
 fn add_ui(lua: &Lua, _egui_table: &Table) -> mlua::Result<()> {
-    lua.register_userdata_type(|reg: &mut UserDataRegistrar<Ui>| {
+    lua.register_userdata_type(|reg: &mut UserDataRegistry<Ui>| {
         reg.add_method_mut(
             "add_enabled_ui",
             |lua, this, (enabled, add_contents): (bool, Function)| {
@@ -1303,7 +1303,7 @@ impl LuaHelperTrait for Color32 {
 impl LuaHelperTrait for Pos2 {
     fn from_lua(value: Value) -> Result<Self> {
         match value {
-            Value::Vector(x, y, _) => Ok(Self { x, y }),
+            Value::Vector(v) => Ok(Self { x: v.x(), y: v.y() }),
             _ => Err(mlua::Error::FromLuaConversionError {
                 from: "luavalue",
                 to: "pos2",
@@ -1313,7 +1313,7 @@ impl LuaHelperTrait for Pos2 {
     }
 
     fn to_lua(value: Self, _lua: &Lua) -> Result<Value> {
-        Ok(Value::Vector(value.x, value.y, 0.0))
+        Ok(Value::Vector(Vector::new(value.x, value.y, 0.0, 0.0)))
     }
 
     fn add_to_lua(_lua: &Lua, _egui_table: &Table) -> Result<()> {
@@ -1336,10 +1336,10 @@ impl LuaHelperTrait for Stroke {
     }
     fn from_lua(value: Value) -> Result<Self> {
         match value {
-            Value::Vector(width, color, _) => {
-                let color = color.to_le_bytes();
+            Value::Vector(v) => {
+                let color = v.y().to_le_bytes();
                 Ok(Self {
-                    width,
+                    width: v.x(),
                     color: Color32::from_rgba_premultiplied(color[0], color[1], color[2], color[3]),
                 })
             }
@@ -1355,13 +1355,13 @@ impl LuaHelperTrait for Stroke {
         let width = value.width;
         let color = value.color.to_array();
         let color = f32::from_le_bytes(color);
-        Ok(Value::Vector(width, color, 0.0))
+        Ok(Value::Vector(Vector::new(width, color, 0.0, 0.0)))
     }
 }
 impl LuaHelperTrait for Vec2 {
     fn from_lua(value: Value) -> Result<Self> {
         match value {
-            Value::Vector(x, y, _) => Ok(Self { x, y }),
+            Value::Vector(v) => Ok(Self { x: v.x(), y: v.y() }),
             _ => Err(mlua::Error::FromLuaConversionError {
                 from: "luavalue",
                 to: "pos2",
@@ -1371,7 +1371,7 @@ impl LuaHelperTrait for Vec2 {
     }
 
     fn to_lua(value: Self, _lua: &Lua) -> Result<Value> {
-        Ok(Value::Vector(value.x, value.y, 0.0))
+        Ok(Value::Vector(Vector::new(value.x, value.y, 0.0, 0.0)))
     }
 
     fn add_to_lua(_lua: &Lua, _egui_table: &Table) -> Result<()> {
@@ -1606,7 +1606,7 @@ impl LuaHelperTrait for WidgetText {
     }
 
     fn add_to_lua(lua: &Lua, _egui_table: &Table) -> Result<()> {
-        lua.register_userdata_type(|_reg: &mut UserDataRegistrar<WidgetText>| {})?;
+        lua.register_userdata_type(|_reg: &mut UserDataRegistry<WidgetText>| {})?;
         Ok(())
     }
 }
@@ -1651,7 +1651,7 @@ impl LuaHelperTrait for RichText {
     }
 
     fn add_to_lua(lua: &Lua, egui_table: &Table) -> Result<()> {
-        lua.register_userdata_type(|reg: &mut UserDataRegistrar<RichText>| {
+        lua.register_userdata_type(|reg: &mut UserDataRegistry<RichText>| {
             reg.add_method("is_empty", |_, this, ()| Ok(this.is_empty()));
             reg.add_method("text", |_, this, ()| Ok(this.text().to_string()));
             reg.add_method("size", |lua, this, size: f32| {
@@ -1687,7 +1687,7 @@ impl<'lua> LuaHashable<'lua> {
     }
 }
 fn add_style(lua: &Lua, egui_table: &Table) -> Result<()> {
-    lua.register_userdata_type(|style: &mut UserDataRegistrar<Style>| {
+    lua.register_userdata_type(|style: &mut UserDataRegistry<Style>| {
         style.add_method_mut("ui", |_, this, mut ui: UserDataRefMut<Ui>| {
             this.ui(&mut ui);
             Ok(())
@@ -1756,7 +1756,7 @@ fn add_frame(lua: &Lua, egui_table: &Table) -> Result<()> {
         })?,
     )?;
     egui_table.set("frame", frame)?;
-    lua.register_userdata_type(|frame: &mut UserDataRegistrar<Frame>| {
+    lua.register_userdata_type(|frame: &mut UserDataRegistry<Frame>| {
         frame.add_field_method_get("inner_margin", |lua, this| -> Result<Value> {
             Margin::to_lua(this.inner_margin, lua)
         });
@@ -1795,7 +1795,7 @@ fn add_frame(lua: &Lua, egui_table: &Table) -> Result<()> {
     Ok(())
 }
 fn add_shadow(lua: &Lua, _egui_table: &Table) -> Result<()> {
-    lua.register_userdata_type(|shadow: &mut UserDataRegistrar<Shadow>| {
+    lua.register_userdata_type(|shadow: &mut UserDataRegistry<Shadow>| {
         shadow.add_field_method_get("extrusion", |_, this| Ok(this.extrusion));
         shadow.add_field_method_get("color", |lua, this| Color32::to_lua(this.color, lua));
         shadow.add_field_method_set("extrusion", |_, this, extrusion: f32| {
@@ -1860,7 +1860,7 @@ impl LuaHelperTrait for Order {
 }
 
 fn add_layer_id(lua: &Lua, egui_table: &Table) -> Result<()> {
-    lua.register_userdata_type(|layer_id: &mut UserDataRegistrar<LayerId>| {
+    lua.register_userdata_type(|layer_id: &mut UserDataRegistry<LayerId>| {
         layer_id.add_field_method_get("order", |lua, this| Order::to_lua(this.order, lua));
         layer_id.add_field_method_get("id", |lua, this| Id::to_lua(this.id, lua));
         layer_id.add_field_method_set("order", |_, this, order: Value| {
@@ -1897,7 +1897,7 @@ fn add_layer_id(lua: &Lua, egui_table: &Table) -> Result<()> {
     Ok(())
 }
 fn add_area(lua: &Lua, egui_table: &Table) -> Result<()> {
-    lua.register_userdata_type(|area: &mut UserDataRegistrar<Area>| {
+    lua.register_userdata_type(|area: &mut UserDataRegistry<Area>| {
         area.add_method_mut("anchor", |_, this, (align, offset): (Value, Value)| {
             *this = this.anchor(Align2::from_lua(align)?, Vec2::from_lua(offset)?);
             Ok(())
@@ -1975,7 +1975,7 @@ fn add_area(lua: &Lua, egui_table: &Table) -> Result<()> {
 }
 
 fn add_window(lua: &Lua, egui_table: &Table) -> Result<()> {
-    lua.register_userdata_type(|window: &mut UserDataRegistrar<Option<Window<'static>>>| {
+    lua.register_userdata_type(|window: &mut UserDataRegistry<Option<Window<'static>>>| {
         window.add_method_mut("anchor", |_, this, (align, offset): (Value, Value)| {
             *this = Some(
                 this.take()
@@ -2256,7 +2256,7 @@ fn add_window(lua: &Lua, egui_table: &Table) -> Result<()> {
 
 fn add_central_panel(lua: &Lua, egui_table: &Table) -> Result<()> {
     lua.register_userdata_type(
-        |central_panel: &mut UserDataRegistrar<Option<CentralPanel>>| {
+        |central_panel: &mut UserDataRegistry<Option<CentralPanel>>| {
             central_panel.add_method_mut("frame", |_, this, frame: UserDataRef<Frame>| {
                 *this = Some(
                     this.take()
@@ -2329,7 +2329,7 @@ fn add_central_panel(lua: &Lua, egui_table: &Table) -> Result<()> {
     Ok(())
 }
 fn add_side_panel(lua: &Lua, egui_table: &Table) -> Result<()> {
-    lua.register_userdata_type(|side_panel: &mut UserDataRegistrar<Option<SidePanel>>| {
+    lua.register_userdata_type(|side_panel: &mut UserDataRegistry<Option<SidePanel>>| {
         side_panel.add_method_mut("default_width", |_, this, default_width: f32| {
             *this = Some(
                 this.take()
@@ -2469,7 +2469,7 @@ fn add_side_panel(lua: &Lua, egui_table: &Table) -> Result<()> {
 }
 fn add_top_bottom_panel(lua: &Lua, egui_table: &Table) -> Result<()> {
     lua.register_userdata_type(
-        |top_bottom_panel: &mut UserDataRegistrar<Option<TopBottomPanel>>| {
+        |top_bottom_panel: &mut UserDataRegistry<Option<TopBottomPanel>>| {
             top_bottom_panel.add_method_mut("default_height", |_, this, default_width: f32| {
                 *this = Some(
                     this.take()
