@@ -5,29 +5,25 @@ rustflags = [
     "-C",
     "link-arg=-s",
     "-C",
-    "link-arg=USE_GLFW=3",                                      # for glfw support. 
+    "link-arg=USE_GLFW=3",                   # for glfw support. 
     "-C",
     "link-arg=-s",
     "-C",
-    "link-arg=FULL_ES2",                                        # for opengl es 2 emulation
+    "link-arg=FULL_ES2",                     # for opengl es 2 emulation
     "-C",
     "link-arg=-s",
     "-C",
-    "link-arg=FULL_ES3",                                        # for opengl es 3 emulation
+    "link-arg=FULL_ES3",                     # for opengl es 3 emulation
     "-C",
     "link-arg=-s",
     "-C",
-    "link-arg=USE_SDL=2",                                       # for sdl2. 
+    "link-arg=MAX_WEBGL_VERSION=2 ",         # to make sure that webgl2 is enabled. 
     "-C",
     "link-arg=-s",
     "-C",
-    "link-arg=MAX_WEBGL_VERSION=2 ",                            # to make sure that webgl2 is enabled. 
+    "link-arg=MIN_WEBGL_VERSION=2",          # to disable webgl1 completely, and use webgl2 exclusively. 
     "-C",
     "link-arg=-s",
     "-C",
-    "link-arg=MIN_WEBGL_VERSION=2",                             # to disable webgl1 completely, and use webgl2 exclusively. 
-    "-C",
-    "link-arg=-s",
-    "-C",
-    "link-arg=DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=1", # i don't even remember why i have this :D.
+    "link-arg=ERROR_ON_UNDEFINED_SYMBOLS=0", # emscripten is very brittle sometimes with missing symbols. you can remove this flag if you don't have any problem with this.
 ]

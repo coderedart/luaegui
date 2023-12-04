@@ -1,5 +1,6 @@
-#!/bin/sh
+#!/bin/bash
 # this script is used to build and copy the files into a directory called dist.
+set -ex
 
 echo "building for emscripten target"
 cargo build --example=basic --target=wasm32-unknown-emscripten --release
