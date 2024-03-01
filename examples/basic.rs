@@ -1,6 +1,4 @@
-use egui_backend::{BackendConfig, GfxBackend, UserApp, WindowBackend};
-use egui_render_glow::GlowBackend;
-use egui_window_glfw_passthrough::GlfwBackend;
+use egui_overlay::*;
 use mlua::Function;
 
 fn main() {
@@ -9,20 +7,22 @@ fn main() {
 
 const LUA_CODE: &str = include_str!("script.lua");
 
-struct AppData<W: WindowBackend, G: GfxBackend> {
+struct AppData {
     pub script_time: std::time::Duration,
     pub lua: mlua::Lua,
     pub code: String,
     pub markdown_cache: egui_commonmark::CommonMarkCache,
-    pub egui_context: egui::Context,
-    pub gfx_backend: G,
-    pub window_backend: W,
 }
 
-impl<W: WindowBackend, G: GfxBackend> UserApp for AppData<W, G> {
-    fn gui_run(&mut self) {
+impl EguiOverlay for AppData {
+    fn gui_run(
+        &mut self,
+        egui_context: &egui::Context,
+        _default_gfx_backend: &mut egui_render_three_d::ThreeDBackend,
+        _glfw_backend: &mut egui_window_glfw_passthrough::GlfwBackend,
+    ) {
         use egui::*;
-        let ctx = self.egui_context.clone();
+        let ctx = egui_context.clone();
         Window::new("README").show(&ctx, |ui| {
             egui_commonmark::CommonMarkViewer::new("readme renderer").show(
                 ui,
@@ -58,44 +58,18 @@ impl<W: WindowBackend, G: GfxBackend> UserApp for AppData<W, G> {
         }
         self.script_time = start.elapsed();
     }
-    type UserGfxBackend = G;
-    type UserWindowBackend = W;
-    fn get_all(
-        &mut self,
-    ) -> (
-        &mut Self::UserWindowBackend,
-        &mut Self::UserGfxBackend,
-        &egui::Context,
-    ) {
-        (
-            &mut self.window_backend,
-            &mut self.gfx_backend,
-            &mut self.egui_context,
-        )
-    }
 }
 
 fn fake_main() {
-    let mut window_backend = GlfwBackend::new(
-        Default::default(),
-        BackendConfig {
-            is_opengl: true,
-            ..Default::default()
-        },
-    );
-    let gfx_backend = GlowBackend::new(&mut window_backend, Default::default());
     let lua = mlua::Lua::new();
     luaegui::register_egui_bindings(&lua).unwrap();
     let app = AppData {
-        egui_context: Default::default(),
-        gfx_backend,
-        window_backend,
         lua,
         code: LUA_CODE.to_string(),
         script_time: std::time::Duration::ZERO,
         markdown_cache: Default::default(),
     };
-    GlfwBackend::run_event_loop(app);
+    start(app)
 }
 
 const README: &str = include_str!("../README.md");

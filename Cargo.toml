@@ -8,15 +8,18 @@ edition = "2021"
 [features]
 
 [dependencies]
-egui = "0.22"
+egui = "0.26"
 mlua = { version = "0.9", features = ["luau-vector4"] }
 
 [dev-dependencies]
-egui_backend = "0.4"
-egui_render_glow = "0.4"
-egui_commonmark = "0.7"
+egui_commonmark = "0.13"
 
+# disable default glfw features on emscripten
 [target.'cfg(target_arch = "wasm32")'.dev-dependencies]
-egui_window_glfw_passthrough = { version = "0.4", default-features = false }
+egui_overlay = { version = "0.8.1", default-features = false, features = [
+    "egui_default",
+    "three_d",
+] }
+# enable default glfw feature (enabled by default) on non-wasm platforms.
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
-egui_window_glfw_passthrough = { version = "0.4" }
+egui_overlay = { version = "0.8.1" }

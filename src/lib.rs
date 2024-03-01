@@ -1,5 +1,6 @@
 use egui::{
     epaint::Shadow,
+    load::SizedTexture,
     style::{Spacing, WidgetVisuals},
     Align, Align2, Area, CentralPanel, Color32, Context, Direction, Frame, Id, LayerId, Layout,
     Margin, Order, PointerButton, Pos2, Rect, RichText, Rounding, Sense, SidePanel, Stroke, Style,
@@ -73,8 +74,8 @@ fn add_context(lua: &Lua, _: &Table) -> mlua::Result<()> {
 impl LuaHelperTrait for Id {
     fn from_lua(value: Value) -> Result<Self> {
         Ok(match value {
-            Value::Nil => Id::null(),
-            Value::String(s) => Id::null().with(s.to_str().unwrap_or_default()),
+            Value::Nil => Id::NULL,
+            Value::String(s) => Id::NULL.with(s.to_str().unwrap_or_default()),
             Value::UserData(u) => {
                 *u.borrow()
                     .map_err(|_e| mlua::Error::FromLuaConversionError {
@@ -106,7 +107,7 @@ impl LuaHelperTrait for Id {
         lua.register_userdata_type(|reg: &mut UserDataRegistry<Id>| {
             reg.add_method("with", |lua, this, value: Value| {
                 lua.create_any_userdata(match value {
-                    Value::Nil => Id::null(),
+                    Value::Nil => Id::NULL,
                     Value::Boolean(b) => this.with(b),
                     Value::Integer(b) => this.with(b),
                     Value::String(b) => this.with(b),
@@ -123,7 +124,7 @@ impl LuaHelperTrait for Id {
                 Ok(this.short_debug_format())
             });
         })?;
-        id.set("null", lua.create_any_userdata(Id::null())?)?;
+        id.set("null", lua.create_any_userdata(Id::NULL)?)?;
         egui_table.set("id", id)?;
         Ok(())
     }
@@ -166,7 +167,7 @@ fn add_widget_visuals(lua: &Lua, egui_table: &Table) -> mlua::Result<()> {
             Ok(())
         });
     })?;
-    id.set("null", lua.create_any_userdata(Id::null())?)?;
+    id.set("null", lua.create_any_userdata(Id::NULL)?)?;
     egui_table.set("id", id)?;
     Ok(())
 }
@@ -246,16 +247,16 @@ fn add_spacing(lua: &Lua, _egui_table: &Table) -> mlua::Result<()> {
             Ok(this.indent_ends_with_horizontal_line)
         });
         reg.add_field_method_get("combo_height", |_, this| Ok(this.combo_height));
-        reg.add_field_method_get("scroll_bar_width", |_, this| Ok(this.scroll_bar_width));
-        reg.add_field_method_get("scroll_handle_min_length", |_, this| {
-            Ok(this.scroll_handle_min_length)
-        });
-        reg.add_field_method_get("scroll_bar_inner_margin", |_, this| {
-            Ok(this.scroll_bar_inner_margin)
-        });
-        reg.add_field_method_get("scroll_bar_outer_margin", |_, this| {
-            Ok(this.scroll_bar_outer_margin)
-        });
+        // reg.add_field_method_get("scroll_bar_width", |_, this| Ok(this.scroll_bar_width));
+        // reg.add_field_method_get("scroll_handle_min_length", |_, this| {
+        //     Ok(this.scroll_handle_min_length)
+        // });
+        // reg.add_field_method_get("scroll_bar_inner_margin", |_, this| {
+        //     Ok(this.scroll_bar_inner_margin)
+        // });
+        // reg.add_field_method_get("scroll_bar_outer_margin", |_, this| {
+        //     Ok(this.scroll_bar_outer_margin)
+        // });
 
         // reg.add_field_method_set("weak_bg_fill", |_, this, value: Value| {
         //     this.weak_bg_fill = Color32::from_lua(value)?;
@@ -591,12 +592,12 @@ fn add_ui(lua: &Lua, _egui_table: &Table) -> mlua::Result<()> {
             },
         );
 
-        reg.add_method(
-            "debug_paint_cursor",
-            |_, this, ()| {
-                Ok(this.debug_paint_cursor())
-            },
-        );
+        // reg.add_method(
+        //     "debug_paint_cursor",
+        //     |_, this, ()| {
+        //         Ok(this.debug_paint_cursor())
+        //     },
+        // );
         reg.add_method_mut("drag_angle", |lua, this, value: Table| {
             let mut b: f32 = value.get("value")?;
             let result = lua.create_any_userdata(this.drag_angle(&mut b));
@@ -749,7 +750,7 @@ fn add_ui(lua: &Lua, _egui_table: &Table) -> mlua::Result<()> {
         reg.add_method("id", |lua, this, ()| lua.create_any_userdata(this.id()));
 
         reg.add_method_mut("image", |lua, this, (texture, size): (UserDataRef<TextureHandle>,  Value)| {
-            lua.create_any_userdata(this.image(texture.id(), Vec2::from_lua(size)? ))
+            lua.create_any_userdata(this.image(SizedTexture::new(texture.id(), Vec2::from_lua(size)?) ))
         });
         reg.add_method_mut(
             "indent",
@@ -1143,7 +1144,7 @@ impl LuaHelperTrait for Rounding {
         )?;
         rounding.set(
             "none",
-            lua.create_function(|lua, ()| Rounding::to_lua(Rounding::none(), lua))?,
+            lua.create_function(|lua, ()| Rounding::to_lua(Rounding::ZERO, lua))?,
         )?;
         rounding.set(
             "is_same",
@@ -1262,8 +1263,8 @@ impl LuaHelperTrait for Color32 {
         color32.set("gold", Color32::to_lua(Color32::GOLD, lua)?)?;
         color32.set("debug_color", Color32::to_lua(Color32::DEBUG_COLOR, lua)?)?;
         color32.set(
-            "temporary_color",
-            Color32::to_lua(Color32::TEMPORARY_COLOR, lua)?,
+            "placeholder_color",
+            Color32::to_lua(Color32::PLACEHOLDER, lua)?,
         )?;
 
         color32.set(
@@ -1914,10 +1915,10 @@ fn add_area(lua: &Lua, egui_table: &Table) -> Result<()> {
             *this = this.default_pos(Pos2::from_lua(default_pos)?);
             Ok(())
         });
-        area.add_method_mut("drag_bounds", |_, this, bounds: Value| {
-            *this = this.drag_bounds(Rect::from_lua(bounds)?);
-            Ok(())
-        });
+        // area.add_method_mut("drag_bounds", |_, this, bounds: Value| {
+        //     *this = this.drag_bounds(Rect::from_lua(bounds)?);
+        //     Ok(())
+        // });
         area.add_method_mut("enabled", |_, this, enabled: bool| {
             *this = this.enabled(enabled);
             Ok(())
@@ -2065,14 +2066,14 @@ fn add_window(lua: &Lua, egui_table: &Table) -> Result<()> {
             );
             Ok(())
         });
-        window.add_method_mut("drag_bounds", |_, this, bounds: Value| {
-            *this = Some(
-                this.take()
-                    .ok_or_else(|| mlua::Error::RuntimeError("window is null".to_owned()))?
-                    .drag_bounds(Rect::from_lua(bounds)?),
-            );
-            Ok(())
-        });
+        // window.add_method_mut("drag_bounds", |_, this, bounds: Value| {
+        //     *this = Some(
+        //         this.take()
+        //             .ok_or_else(|| mlua::Error::RuntimeError("window is null".to_owned()))?
+        //             .drag_bounds(Rect::from_lua(bounds)?),
+        //     );
+        //     Ok(())
+        // });
         window.add_method_mut("enabled", |_, this, enabled: bool| {
             *this = Some(
                 this.take()

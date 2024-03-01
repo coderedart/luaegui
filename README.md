@@ -1,3 +1,21 @@
+# Unmaintained
+### This repo is abandoned and you are welcome to fork it.
+
+## Deprecation Reason: Performance
+1. Due to the immediate mode nature of `egui`, the scripts need to run *every* frame (average of 60 fps atleast).
+2. Ui code creates *lots* of temporary `use once` objects, which means lots of garbage collectable objects for a reasonably complex ui script. It is also expensive to create/recreate these objects every frame.
+    1. Builder pattern creates a struct for every container/widget. eg: `Window::new("hello")` or `RichText::new("text").color(egui.blue)` etc..
+    2. return values of widget `ui` fn like `Response` also create userdata objects.
+    3. each `&mut Ui` needs to create a new userdata object to bind that reference to.
+    4. Even value types like `Rect` will need to be userdata.
+3. Due to a large amount of function calls between native host egui and the script, JIT also sucks at optimizing this. 
+4. All the closures also require jumping between host and guest scopes which have some "setup"/"teardown" costs 
+
+This project might still work for some people, and I would encourage them to fork this repo.
+But I would like to experiment with retained mode toolkits now, where you only scripts on events.
+
+
+
 # luaegui
 egui bindings for mlua. 
 
